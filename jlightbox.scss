@@ -1,0 +1,198 @@
+$jlightbox-background-color: rgba(0, 0, 0, 0.75) !default;
+$jlightbox-prev-arrow-offset: 1em !default;
+$jlightbox-next-arrow-offset: 1em !default;
+
+.jlightbox {
+  @keyframes loader {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+
+  &--is-open {
+    pointer-events: all;
+
+    .jlightbox__item {
+      pointer-events: all;
+    }
+  }
+
+  &__background {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: $jlightbox-background-color;
+  }
+
+  &__stage {
+    position: absolute;
+    width: 100vw;
+    height: 100vh;
+    z-index: 2;
+  }
+
+  &__item {
+    display: block;
+    position: absolute;
+    top: 200vh;
+    left: 200vw;
+    outline: 0;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+
+    &--video {
+      object-fit: cover;
+    }
+
+    &--cloned {
+      pointer-events: none;
+    }
+
+    &-wrapper {
+      position: absolute;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+    }
+  }
+
+  &__loading {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+
+    &::after {
+      content: '';
+      display: block;
+      width: 1.5em;
+      height: 1.5em;
+      margin: 0 auto;
+      padding: 0;
+      border-radius: 50%;
+      border: 5px solid #FFF;
+      border-color: #FFF transparent;
+      background-color: transparent;
+      animation: loader 1.2s linear infinite;
+      transition: none;
+    }
+  }
+
+  &__arrow {
+    display: none;
+    position: absolute;
+    top: 50%;
+    width: 3em;
+    height: 5em;
+    padding: 0;
+    background: none;
+    border: 0;
+    outline: 0;
+    transform: translateY(-50%);
+    cursor: pointer;
+    z-index: 3;
+
+    &::after {
+      position: absolute;
+      content: '';
+      top: 1em;
+      width: 2em;
+      height: 2em;
+      transition: border-color 300ms ease;
+      border: {
+        style: solid;
+        width: 0.5em 0.5em 0 0;
+        radius: 0.1em;
+        color: #FFF;
+      };
+    }
+
+    &:hover::after {
+      border-color: #888;
+    }
+
+    &--prev {
+      left: $jlightbox-prev-arrow-offset;
+
+      &::after {
+        left: 1em;
+        transform: rotate(-135deg);
+      }
+    }
+
+    &--next {
+      right: $jlightbox-next-arrow-offset;
+
+      &::after {
+        right: 1em;
+        transform: rotate(45deg);
+      }
+    }
+  }
+
+  &__control {
+    &-button {
+      position: absolute;
+      top: 1em;
+      right: 1em;
+      width: 2.5em;
+      height: 2.5em;
+      padding: 0;
+      background: none;
+      border: 0;
+      outline: 0;
+      cursor: pointer;
+      z-index: 3;
+
+      &--close {
+        &::before,
+        &::after {
+          position: absolute;
+          content: '';
+          top: 50%;
+          left: 50%;
+          width: 80%;
+          height: 0.25em;
+          border-radius: 0.25em;
+          background-color: #FFF;
+          transition: background-color 300ms ease;
+        }
+
+        &::before {
+          transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        &::after {
+          transform: translate(-50%, -50%) rotate(-45deg);
+        }
+
+        &:hover {
+          &::before,
+          &::after {
+            background-color: #888;
+          }
+        }
+      }
+    }
+  }
+}

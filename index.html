@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JLightbox</title>
+  <link rel="stylesheet" href="/dist/jlightbox.css">
+
+  <style>
+    .flex {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    a, img {
+      display: block;
+    }
+
+    a img {
+      width: 150px;
+      height: 150px;
+    }
+  </style>
+</head>
+  <body>
+    <div class="flex">
+      <a href="https://via.placeholder.com/100" data-jlightbox>
+        <img src="https://via.placeholder.com/100">
+      </a>
+
+      <a href="https://via.placeholder.com/150" data-jlightbox>
+        <img src="https://via.placeholder.com/150">
+      </a>
+
+      <a href="https://placedog.net/1000/563" data-jlightbox>
+        <img src="https://via.placeholder.com/200">
+      </a>
+
+      <a href="http://techslides.com/demos/sample-videos/small.mp4" data-jlightbox>
+        <img src="https://via.placeholder.com/250">
+      </a>
+    </div>
+
+    <script src="/dist/app.js"></script>
+  </body>
+</html>
