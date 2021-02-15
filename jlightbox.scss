@@ -1,6 +1,11 @@
 $jlightbox-background-color: rgba(0, 0, 0, 0.75) !default;
 $jlightbox-prev-arrow-offset: 1em !default;
 $jlightbox-next-arrow-offset: 1em !default;
+$jlightbox-button-color: #FFF;
+$jlightbox-button-color-hover: #888;
+$jlightbox-button-focus-outline-color: #FFF;
+$jlightbox-loading-color: #FFF;
+$jlightbox-loading-animation-duration: 1200ms !default;
 
 .jlightbox {
   @keyframes loader {
@@ -90,10 +95,10 @@ $jlightbox-next-arrow-offset: 1em !default;
       margin: 0 auto;
       padding: 0;
       border-radius: 50%;
-      border: 5px solid #FFF;
-      border-color: #FFF transparent;
+      border: 5px solid $jlightbox-loading-color;
+      border-color: $jlightbox-loading-color transparent;
       background-color: transparent;
-      animation: loader 1.2s linear infinite;
+      animation: loader $jlightbox-loading-animation-duration linear infinite;
       transition: none;
     }
   }
@@ -115,7 +120,7 @@ $jlightbox-next-arrow-offset: 1em !default;
     &::after {
       position: absolute;
       content: '';
-      top: 1em;
+      top: 1.25em;
       width: 2em;
       height: 2em;
       transition: border-color 300ms ease;
@@ -123,12 +128,16 @@ $jlightbox-next-arrow-offset: 1em !default;
         style: solid;
         width: 0.5em 0.5em 0 0;
         radius: 0.1em;
-        color: #FFF;
+        color: $jlightbox-button-color;
       };
     }
 
+    &:focus-visible {
+      outline: 1px solid $jlightbox-button-focus-outline-color;
+    }
+
     &:hover::after {
-      border-color: #888;
+      border-color: $jlightbox-button-color-hover;
     }
 
     &--prev {
@@ -164,6 +173,10 @@ $jlightbox-next-arrow-offset: 1em !default;
       cursor: pointer;
       z-index: 3;
 
+      &:focus-visible {
+        outline: 1px solid $jlightbox-button-focus-outline-color;
+      }
+
       &--close {
         &::before,
         &::after {
@@ -174,7 +187,7 @@ $jlightbox-next-arrow-offset: 1em !default;
           width: 80%;
           height: 0.25em;
           border-radius: 0.25em;
-          background-color: #FFF;
+          background-color: $jlightbox-button-color;
           transition: background-color 300ms ease;
         }
 
@@ -189,7 +202,7 @@ $jlightbox-next-arrow-offset: 1em !default;
         &:hover {
           &::before,
           &::after {
-            background-color: #888;
+            background-color: $jlightbox-button-color-hover;
           }
         }
       }
