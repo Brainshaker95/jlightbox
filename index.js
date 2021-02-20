@@ -1,3 +1,4 @@
+/* eslint-disable no-bitwise */
 import $, { noop } from 'jlight';
 
 const translate = (options, key) => {
@@ -28,16 +29,25 @@ const translate = (options, key) => {
   return translations[language] ? translations[language][key] : translations.en[key];
 };
 
+const getHash = (string) => Math.abs(string.split('').reduce((hash, b) => {
+  const a = ((hash << 5) - hash) + b.charCodeAt(0);
+
+  return a & a;
+}, 0));
+
 const getPlaceholders = (string) => (string.match(/{{(.*?)}}/g) || []).map((match) => match.slice(2, -2));
 
-const replacePlaceholders = (theString, options) => {
+const replacePlaceholders = (theString, options, params) => {
   let string = theString;
 
-  getPlaceholders(string).forEach((theKey) => {
+  getPlaceholders(string).forEach((theKey, index) => {
     const key = theKey.trim();
     const replaceRegEx = new RegExp(`{{ ${key} }}`, 'g');
 
-    string = string.replace(replaceRegEx, translate(options, key));
+    string = string.replace(
+      replaceRegEx,
+      params.length && params[index] ? params[index] : translate(options, key),
+    );
   });
 
   return string;
@@ -106,13 +116,15 @@ const template = (options) => {
   }
 
   return `
-    <div class="${classPrefix}">
+    <div class="${classPrefix}" aria-hidden="true">
       ${prevButtonTemplate}
       <div class="${classPrefix}__stage" data-jlightbox-stage></div>
       ${nextButtonTemplate}
+      <div class="${classPrefix}__index" data-jlightbox-index></div>
       ${closeButtonTemplate}
       ${loadingIndicatorTemplate}
       <div class="${classPrefix}__background" data-jlightbox-background></div>
+      <div class="${classPrefix}__cache" data-jlightbox-cache></div>
     </div>
   `;
 };
@@ -210,6 +222,40 @@ const handleResize = ($stage, options) => {
   });
 };
 
+const getContentFromItem = ($item, $cache, index, { classPrefix, videoTypes }) => {
+  let $realContent = $cache.find(`[data-jlightbox-cached-id="${index}"]`);
+  let $clonedContent = $cache.find(`[data-jlightbox-cloned-cached-id="${index}"]`);
+  let isCached = false;
+  const href = $item.attr('href');
+  const isVideo = videoTypes.some((videoType) => href.endsWith(videoType));
+
+  if (!$realContent.length) {
+    if (isVideo) {
+      $realContent = $(`<video class="${classPrefix}__item ${classPrefix}__item--video ${classPrefix}__item--real" controls>
+        <source src="${href}"></source>
+      </video>`);
+    } else {
+      $realContent = $(`<img src="${href}" class="${classPrefix}__item ${classPrefix}__item--image ${classPrefix}__item--real">`);
+    }
+  } else {
+    isCached = true;
+  }
+
+  if (!$clonedContent.length) {
+    $clonedContent = $item
+      .find(':first-child')
+      .clone()
+      .addClass(`${classPrefix}__item ${classPrefix}__item--cloned`);
+  }
+
+  return {
+    $realContent,
+    $clonedContent,
+    isVideo,
+    isCached,
+  };
+};
+
 const doOpenAnimation = ($originalItem, $stage, options) => {
   const {
     classPrefix,
@@ -220,24 +266,20 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
     zIndex,
   } = options;
 
+  const {
+    $realContent,
+    $clonedContent,
+    isVideo,
+    isCached,
+  } = getContentFromItem(
+    $originalItem,
+    $stage.closest(`.${classPrefix}`).find('[data-jlightbox-cache]'),
+    $originalItem.data('jlightbox-id'),
+    options,
+  );
+
   const originalDimensions = getOriginalDimensions($originalItem);
-  const href = $originalItem.attr('href');
-  const isVideo = href.endsWith('mp4') || href.endsWith('webm');
-  let $realContent;
-
-  if (isVideo) {
-    $realContent = $(`<video class="${classPrefix}__item ${classPrefix}__item--video ${classPrefix}__item--real" controls><source src="${href}"></source></video>`);
-  } else {
-    $realContent = $(`<img src="${href}" class="${classPrefix}__item ${classPrefix}__item--image ${classPrefix}__item--real">`);
-  }
-
   const $loadingIndicator = $stage.closest(`.${classPrefix}`).find('[data-jlightbox-loading]');
-
-  const $clonedContent = $originalItem
-    .find(':first-child')
-    .clone()
-    .addClass(`${classPrefix}__item ${classPrefix}__item--cloned`);
-
   const $itemWrapper = $(`<div class="${classPrefix}__item-wrapper">`);
 
   $itemWrapper
@@ -246,6 +288,7 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
 
   $originalItem.css('z-index', zIndex + 1);
   $loadingIndicator.stop().fadeIn(200);
+  window.location.hash = getHash($originalItem.attr('href'));
 
   $stage
     .empty()
@@ -296,6 +339,12 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
       });
   };
 
+  if (isCached) {
+    onContentLoad();
+
+    return;
+  }
+
   if (isVideo) {
     $realContent.on('loadeddata', onContentLoad);
   } else {
@@ -313,11 +362,28 @@ const doCloseAnimation = ($originalItem, $stage, options) => {
   const originalDimensions = getOriginalDimensions($originalItem);
   const $realContent = $stage.find(`.${classPrefix}__item--real`);
   const $clonedContent = $stage.find(`.${classPrefix}__item--cloned`);
+  const $cache = $stage.closest(`.${classPrefix}`).find('[data-jlightbox-cache]');
+  const index = $originalItem.data('jlightbox-id');
 
   $realContent.stop().animate({
     opacity: 0,
     ...originalDimensions,
-  }, closeAnimationDuration, noop, closeAnimationType);
+  }, closeAnimationDuration, () => {
+    if (!$cache.find(`[data-jlightbox-cached-id="${index}"]`).length) {
+      $originalItem.trigger('focus');
+      $realContent.attr('data-jlightbox-cached-id', index);
+      $clonedContent.attr('data-jlightbox-cloned-cached-id', index);
+
+      $cache
+        .append($realContent)
+        .append($clonedContent);
+
+      $realContent.css({
+        width: `${$realContent.data('original-width')}px`,
+        height: `${$realContent.data('original-height')}px`,
+      });
+    }
+  }, closeAnimationType);
 
   $clonedContent.stop().animate({
     opacity: 1,
@@ -334,6 +400,7 @@ export default (opts = {}) => {
     additionalNextClasses: '',
     additionalCloseClasses: '',
     additionalStageClasses: '',
+    additionalIndexClasses: '',
     additionalLoadingClasses: '',
     additionalBackgroundClasses: '',
     openAnimationDuration: 500,
@@ -357,6 +424,8 @@ export default (opts = {}) => {
     nextButtonTemplate: '',
     closeButtonTemplate: '',
     loadingIndicatorTemplate: '',
+    videoTypes: ['mp4', 'mpeg', 'webm'],
+    indexText: '{{ current }} / {{ total }}',
     zIndex: 20,
     ...opts,
   };
@@ -368,6 +437,7 @@ export default (opts = {}) => {
     additionalNextClasses,
     additionalCloseClasses,
     additionalStageClasses,
+    additionalIndexClasses,
     additionalLoadingClasses,
     additionalBackgroundClasses,
     openAnimationDuration,
@@ -388,44 +458,24 @@ export default (opts = {}) => {
   const $prevButton = $jlightbox.find('[data-jlightbox-prev]');
   const $nextButton = $jlightbox.find('[data-jlightbox-next]');
   const $closeButton = $jlightbox.find('[data-jlightbox-close]');
+  const $index = $jlightbox.find('[data-jlightbox-index]');
   const $loadingIndicator = $jlightbox.find('[data-jlightbox-loading]');
   const $background = $jlightbox.find('[data-jlightbox-background]');
+  const $cache = $jlightbox.find('[data-jlightbox-cache]');
+  const totalItemCount = $items.length;
 
-  $jlightbox.when(additionalClasses, 'addClass', additionalClasses);
-  $prevButton.when(additionalPrevButtonClasses, 'addClass', additionalPrevButtonClasses);
-  $nextButton.when(additionalNextClasses, 'addClass', additionalNextClasses);
-  $closeButton.when(additionalCloseClasses, 'addClass', additionalCloseClasses);
-  $stage.when(additionalStageClasses, 'addClass', additionalStageClasses);
-  $loadingIndicator.when(additionalLoadingClasses, 'addClass', additionalLoadingClasses);
-  $background.when(additionalBackgroundClasses, 'addClass', additionalBackgroundClasses);
-
-  $items.forEach(($item, index) => $item.attr('data-jlightbox-id', index));
-
-  $jlightbox.css('z-index', options.zIndex);
-
-  $jlightbox
-    .on('before-open', options.onBeforeOpen)
-    .on('after-open', options.onAfterOpen)
-    .on('before-close', options.onBeforeClose)
-    .on('after-close', options.onAfterClose)
-    .on('prev', options.onPrev)
-    .on('next', options.onNext);
-
-  $window.on('resize', () => {
-    if (!$jlightbox.hasClass(`${classPrefix}--is-open`)) {
-      return;
-    }
-
-    if (resizeTimeout) {
-      clearTimeout(resizeTimeout);
-    }
-
-    resizeTimeout = setTimeout(() => handleResize($stage, options), options.resizeTimeoutDelay);
-  });
+  const updateIndex = (index) => {
+    $index.text(replacePlaceholders(options.indexText, options, [
+      index + 1,
+      totalItemCount,
+    ]));
+  };
 
   const open = (index) => {
     $jlightbox
       .trigger('before-open')
+      .trigger('focus')
+      .attr('aria-hidden', false)
       .addClass(`${classPrefix}--is-opening`);
 
     doOpenAnimation(
@@ -434,9 +484,12 @@ export default (opts = {}) => {
       options,
     );
 
+    updateIndex(index);
+
     $prevButton.fadeIn(openAnimationDuration);
     $nextButton.fadeIn(openAnimationDuration);
     $closeButton.fadeIn(openAnimationDuration);
+    $index.fadeIn(openAnimationDuration);
 
     $background.fadeIn(openAnimationDuration, () => {
       $jlightbox
@@ -447,9 +500,27 @@ export default (opts = {}) => {
     });
   };
 
-  const close = () => {
+  const close = (event) => {
+    let canClose = true;
+
+    if (event) {
+      if (event.target === $closeButton.get(0)) {
+        canClose = true;
+      } else if (event.target !== $stage.get(0)) {
+        canClose = false;
+      }
+    }
+
+    if (!canClose
+      || $jlightbox.hasClass(`${classPrefix}--is-opening`)
+      || $jlightbox.hasClass(`${classPrefix}--is-closing`)) {
+      return;
+    }
+
     const index = $jlightbox.data('current-index') || 0;
     const $video = $jlightbox.find('video');
+
+    window.location.hash = '';
 
     if ($video.length) {
       $video.get(0).pause();
@@ -457,6 +528,8 @@ export default (opts = {}) => {
 
     $jlightbox
       .trigger('before-close')
+      .trigger('blur')
+      .attr('aria-hidden', true)
       .addClass(`${classPrefix}--is-closing`)
       .removeClass(`${classPrefix}--is-open`);
 
@@ -471,6 +544,7 @@ export default (opts = {}) => {
     $prevButton.fadeOut(closeAnimationDuration);
     $nextButton.fadeOut(closeAnimationDuration);
     $closeButton.fadeOut(openAnimationDuration);
+    $index.fadeOut(openAnimationDuration);
 
     $background.fadeOut(closeAnimationDuration, () => {
       $jlightbox
@@ -485,31 +559,24 @@ export default (opts = {}) => {
     }
 
     const index = $jlightbox.data('current-index');
-    const insertionMethod = indexToGoTo < index ? 'prepend' : 'append';
-    const $currentItemWrapper = $stage.find(`.${classPrefix}__item-wrapper`);
     const $itemToGoTo = $items.filter(`[data-jlightbox-id="${indexToGoTo}"]`);
 
     if (!$itemToGoTo.length) {
       return;
     }
 
-    const href = $itemToGoTo.attr('href');
-    const isVideo = href.endsWith('mp4') || href.endsWith('webm');
-    let $realContent;
+    const {
+      $realContent,
+      $clonedContent,
+      isVideo,
+      isCached,
+    } = getContentFromItem($itemToGoTo, $cache, indexToGoTo, options);
 
-    if (isVideo) {
-      $realContent = $(`<video class="${classPrefix}__item ${classPrefix}__item--video ${classPrefix}__item--real" controls><source src="${href}"></source></video>`);
-    } else {
-      $realContent = $(`<img src="${href}" class="${classPrefix}__item ${classPrefix}__item--image ${classPrefix}__item--real">`);
-    }
-
-    const $clonedContent = $itemToGoTo
-      .find(':first-child')
-      .clone()
-      .addClass(`${classPrefix}__item ${classPrefix}__item--cloned`);
-
+    const insertionMethod = indexToGoTo < index ? 'prepend' : 'append';
+    const $currentItemWrapper = $stage.find(`.${classPrefix}__item-wrapper`);
     const $itemWrapper = $(`<div class="${classPrefix}__item-wrapper">`);
 
+    updateIndex(indexToGoTo);
     $jlightbox.data('current-index', indexToGoTo);
     $stage.data('busy', true);
 
@@ -519,6 +586,10 @@ export default (opts = {}) => {
 
     $stage[insertionMethod]($itemWrapper);
     $loadingIndicator.stop().fadeIn(200);
+    window.location.hash = getHash($itemToGoTo.attr('href'));
+
+    const $itemToCache = $currentItemWrapper.find(`.${classPrefix}__item--real`);
+    const $clonedItemToCache = $currentItemWrapper.find(`.${classPrefix}__item--cloned`);
 
     if (insertionMethod === 'append') {
       $currentItemWrapper
@@ -531,6 +602,13 @@ export default (opts = {}) => {
           $currentItemWrapper.animate({
             right: '100vw',
           }, slideAnimationDuration, () => {
+            $itemToCache.attr('data-jlightbox-cached-id', index);
+            $clonedItemToCache.attr('data-jlightbox-cloned-cached-id', index);
+
+            $cache
+              .append($itemToCache)
+              .append($clonedItemToCache);
+
             $currentItemWrapper.remove();
           });
         });
@@ -549,6 +627,13 @@ export default (opts = {}) => {
           $currentItemWrapper.animate({
             left: '100vw',
           }, slideAnimationDuration, () => {
+            $itemToCache.attr('data-jlightbox-cached-id', index);
+            $clonedItemToCache.attr('data-jlightbox-cloned-cached-id', index);
+
+            $cache
+              .append($itemToCache)
+              .append($clonedItemToCache);
+
             $currentItemWrapper.remove();
           });
         });
@@ -569,7 +654,10 @@ export default (opts = {}) => {
         2 * options.stagePaddingY,
       );
 
-      $realContent.css(targetDimensions);
+      $realContent.css({
+        opacity: 1,
+        ...targetDimensions,
+      });
 
       $clonedContent.css({
         ...targetDimensions,
@@ -590,6 +678,12 @@ export default (opts = {}) => {
         });
       }
     };
+
+    if (isCached) {
+      onContentLoad();
+
+      return;
+    }
 
     if (isVideo) {
       $realContent.on('loadeddata', onContentLoad);
@@ -624,15 +718,40 @@ export default (opts = {}) => {
 
   const goToLast = () => goTo($items.length - 1);
 
-  $stage.on('click', ({ target }) => {
-    if (target !== $stage.get(0)
-      || $jlightbox.hasClass(`${classPrefix}--is-opening`)
-      || $jlightbox.hasClass(`${classPrefix}--is-closing`)) {
-      return;
-    }
+  // TODO: Add drag control
+  // $stage.on('dragstart', `.${classPrefix}__item--real`, (event) => {
+  // });
 
-    close();
+  $prevButton.when(additionalPrevButtonClasses, 'addClass', additionalPrevButtonClasses);
+  $nextButton.when(additionalNextClasses, 'addClass', additionalNextClasses);
+  $closeButton.when(additionalCloseClasses, 'addClass', additionalCloseClasses);
+  $stage.when(additionalStageClasses, 'addClass', additionalStageClasses);
+  $index.when(additionalIndexClasses, 'addClass', additionalIndexClasses);
+  $loadingIndicator.when(additionalLoadingClasses, 'addClass', additionalLoadingClasses);
+  $background.when(additionalBackgroundClasses, 'addClass', additionalBackgroundClasses);
+
+  $items.forEach(($item, index) => {
+    $item.attr('data-jlightbox-id', index);
+
+    if (window.location.hash === `#${getHash($item.attr('href'))}`) {
+      setTimeout(() => open(index), 150);
+    }
   });
+
+  $jlightbox
+    .css('z-index', options.zIndex)
+    .when(additionalClasses, 'addClass', additionalClasses)
+    .on('before-open', options.onBeforeOpen)
+    .on('after-open', options.onAfterOpen)
+    .on('before-close', options.onBeforeClose)
+    .on('after-close', options.onAfterClose)
+    .on('prev', options.onPrev)
+    .on('next', options.onNext);
+
+  $prevButton.on('click', goToPrev);
+  $nextButton.on('click', goToNext);
+  $closeButton.on('click', close);
+  $stage.on('click', close);
 
   $items.on('click', (event) => {
     event.preventDefault();
@@ -646,13 +765,53 @@ export default (opts = {}) => {
     open(event.$currentTarget.data('jlightbox-id'));
   });
 
-  // TODO: Add drag control
-  // $stage.on('dragstart', `.${classPrefix}__item--real`, (event) => {
-  // });
+  $window
+    .on('hashchange', () => {
+      if ($jlightbox.hasClass(`${classPrefix}--is-opening`)) {
+        return;
+      }
 
-  $prevButton.on('click', goToPrev);
-  $nextButton.on('click', goToNext);
-  $closeButton.on('click', close);
+      $items.forEach(($item, index) => {
+        if (window.location.hash === `#${getHash($item.attr('href'))}`) {
+          if ($jlightbox.hasClass(`${classPrefix}--is-open`)) {
+            setTimeout(() => goTo(index), 150);
+          } else {
+            setTimeout(() => open(index), 150);
+          }
+        } else if (window.location.hash === '' && !$jlightbox.hasClass(`${classPrefix}--is-closing`)) {
+          setTimeout(close, 150);
+        }
+      });
+    })
+    .on('resize', () => {
+      if (!$jlightbox.hasClass(`${classPrefix}--is-open`)) {
+        return;
+      }
+
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+
+      resizeTimeout = setTimeout(() => handleResize($stage, options), options.resizeTimeoutDelay);
+    })
+    .on('keydown', ({ code }) => {
+      if (code === 'Escape') {
+        close();
+      } else if (code === 'ArrowLeft' || code === 'KeyA') {
+        goToPrev();
+      } else if (code === 'ArrowRight' || code === 'KeyD') {
+        goToNext();
+      } else if (code === 'KeyF') {
+        // TODO
+        // toggleFullscreen();
+      } else if (code === 'KeyA') {
+        // TODO
+        // toggleAutoplay();
+      } else if (code === 'KeyG') {
+        // TODO
+        // toggleGallery();
+      }
+    });
 
   return {
     open,

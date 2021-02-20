@@ -1,10 +1,11 @@
 $jlightbox-background-color: rgba(0, 0, 0, 0.75) !default;
 $jlightbox-prev-arrow-offset: 1em !default;
 $jlightbox-next-arrow-offset: 1em !default;
-$jlightbox-button-color: #FFF;
-$jlightbox-button-color-hover: #888;
-$jlightbox-button-focus-outline-color: #FFF;
-$jlightbox-loading-color: #FFF;
+$jlightbox-button-color: #FFF !default;
+$jlightbox-button-color-hover: #888 !default;
+$jlightbox-button-focus-outline-color: #FFF !default;
+$jlightbox-index-color: #FFF !default;
+$jlightbox-loading-color: #FFF !default;
 $jlightbox-loading-animation-duration: 1200ms !default;
 
 .jlightbox {
@@ -45,6 +46,19 @@ $jlightbox-loading-animation-duration: 1200ms !default;
     width: 100vw;
     height: 100vh;
     background-color: $jlightbox-background-color;
+  }
+
+  &__cache {
+    position: absolute;
+    left: 200vw;
+  }
+
+  &__index {
+    position: absolute;
+    color: $jlightbox-index-color;
+    top: 1em;
+    left: 1em;
+    z-index: 3;
   }
 
   &__stage {

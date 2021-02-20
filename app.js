@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /* eslint-disable no-unused-vars */
 import $, { noop } from 'jlight';
 
@@ -17,6 +16,7 @@ $(() => {
     additionalNextClasses: '',
     additionalCloseClasses: '',
     additionalStageClasses: '',
+    additionalIndexClasses: '',
     additionalLoadingClasses: '',
     additionalBackgroundClasses: '',
     openAnimationDuration: 500,
@@ -40,10 +40,12 @@ $(() => {
     nextButtonTemplate: '',
     closeButtonTemplate: '',
     loadingIndicatorTemplate: '',
+    videoTypes: ['mp4', 'mpeg', 'webm'],
+    indexText: '{{ current }} / {{ total }}',
     zIndex: 20,
   });
 
   // Try something
 
-  lightbox.open(2);
+  // lightbox.open(2);
 });
