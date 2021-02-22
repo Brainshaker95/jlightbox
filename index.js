@@ -76,20 +76,20 @@ const toggleFullscreen = () => {
 };
 
 const template = (options) => {
-  const { classPrefix } = options;
+  const { classPrefix, templates } = options;
 
   let {
-    prevButtonTemplate,
-    nextButtonTemplate,
-    fullscreenButtonTemplate,
-    closeButtonTemplate,
-    loadingIndicatorTemplate,
-  } = options;
+    prevButton,
+    nextButton,
+    fullscreenButton,
+    closeButton,
+    loading,
+  } = templates;
 
-  if (!prevButtonTemplate) {
+  if (!prevButton) {
     const prev = translate(options, 'prev');
 
-    prevButtonTemplate = `
+    prevButton = `
       <button
         type="button"
         class="${classPrefix}__arrow ${classPrefix}__arrow--prev"
@@ -99,13 +99,13 @@ const template = (options) => {
       ></button>
     `;
   } else {
-    prevButtonTemplate = replacePlaceholders(prevButtonTemplate, options);
+    prevButton = replacePlaceholders(prevButton, options);
   }
 
-  if (!nextButtonTemplate) {
+  if (!nextButton) {
     const next = translate(options, 'next');
 
-    nextButtonTemplate = `
+    nextButton = `
       <button
         type="button"
         class="${classPrefix}__arrow ${classPrefix}__arrow--next"
@@ -115,13 +115,13 @@ const template = (options) => {
       ></button>
     `;
   } else {
-    nextButtonTemplate = replacePlaceholders(nextButtonTemplate, options);
+    nextButton = replacePlaceholders(nextButton, options);
   }
 
-  if (!fullscreenButtonTemplate) {
+  if (!fullscreenButton) {
     const toggleFullscreenText = translate(options, 'toggleFullscreen');
 
-    fullscreenButtonTemplate = `
+    fullscreenButton = `
       <button
         type="button"
         class="${classPrefix}__control-button ${classPrefix}__control-button--fullscreen"
@@ -136,13 +136,13 @@ const template = (options) => {
       </button>
     `;
   } else {
-    fullscreenButtonTemplate = replacePlaceholders(fullscreenButtonTemplate, options);
+    fullscreenButton = replacePlaceholders(fullscreenButton, options);
   }
 
-  if (!closeButtonTemplate) {
+  if (!closeButton) {
     const close = translate(options, 'close');
 
-    closeButtonTemplate = `
+    closeButton = `
       <button
         type="button"
         class="${classPrefix}__control-button ${classPrefix}__control-button--close"
@@ -152,24 +152,24 @@ const template = (options) => {
       ></button>
     `;
   } else {
-    closeButtonTemplate = replacePlaceholders(closeButtonTemplate, options);
+    closeButton = replacePlaceholders(closeButton, options);
   }
 
-  if (!loadingIndicatorTemplate) {
-    loadingIndicatorTemplate = `<div class="${classPrefix}__loading" data-jlightbox-loading></div>`;
+  if (!loading) {
+    loading = `<div class="${classPrefix}__loading" data-jlightbox-loading></div>`;
   }
 
   return `
     <div class="${classPrefix}" aria-hidden="true">
-      ${prevButtonTemplate}
+      ${prevButton}
       <div class="${classPrefix}__stage" data-jlightbox-stage></div>
-      ${nextButtonTemplate}
+      ${nextButton}
       <div class="${classPrefix}__index" data-jlightbox-index></div>
       <div class="${classPrefix}__control" data-jlightbox-control>
-        ${fullscreenButtonTemplate}
-        ${closeButtonTemplate}
+        ${fullscreenButton}
+        ${closeButton}
       </div>
-      ${loadingIndicatorTemplate}
+      ${loading}
       <div class="${classPrefix}__background" data-jlightbox-background></div>
       <div class="${classPrefix}__cache" data-jlightbox-cache></div>
     </div>
@@ -442,15 +442,17 @@ export default (opts = {}) => {
   const options = {
     selector: '[data-jlightbox]',
     classPrefix: 'jlightbox',
-    additionalClasses: '',
-    additionalPrevButtonClasses: '',
-    additionalNextClasses: '',
-    additionalFullscreenClasses: '',
-    additionalCloseClasses: '',
-    additionalStageClasses: '',
-    additionalIndexClasses: '',
-    additionalLoadingClasses: '',
-    additionalBackgroundClasses: '',
+    additionalClasses: {
+      general: '',
+      prevButton: '',
+      nextButton: '',
+      fullscreenButton: '',
+      closeButton: '',
+      stage: '',
+      index: '',
+      loading: '',
+      background: '',
+    },
     openAnimationDuration: 500,
     closeAnimationDuration: 500,
     slideAnimationDuration: 500,
@@ -467,12 +469,14 @@ export default (opts = {}) => {
     onPrev: noop,
     onNext: noop,
     translations: {},
-    template: '',
-    prevButtonTemplate: '',
-    nextButtonTemplate: '',
-    fullscreenButtonTemplate: '',
-    closeButtonTemplate: '',
-    loadingIndicatorTemplate: '',
+    templates: {
+      general: '',
+      prevButton: '',
+      nextButton: '',
+      fullscreenButton: '',
+      closeButton: '',
+      loading: '',
+    },
     videoTypes: ['mp4', 'mpeg', 'webm'],
     indexText: '{{ current }} / {{ total }}',
     zIndex: 20,
@@ -482,14 +486,6 @@ export default (opts = {}) => {
   const {
     classPrefix,
     additionalClasses,
-    additionalPrevButtonClasses,
-    additionalNextClasses,
-    additionalFullscreenClasses,
-    additionalCloseClasses,
-    additionalStageClasses,
-    additionalIndexClasses,
-    additionalLoadingClasses,
-    additionalBackgroundClasses,
     openAnimationDuration,
     closeAnimationDuration,
     slideAnimationDuration,
@@ -498,8 +494,8 @@ export default (opts = {}) => {
   let resizeTimeout;
   const $window = $(window);
   const $items = $(options.selector);
-  const $jlightbox = $(options.template
-    ? replacePlaceholders(options.template, options)
+  const $jlightbox = $(options.templates.general
+    ? replacePlaceholders(options.templates.general, options)
     : template(options));
 
   $('body').append($jlightbox);
@@ -776,14 +772,14 @@ export default (opts = {}) => {
   // $stage.on('dragstart', `.${classPrefix}__item--real`, (event) => {
   // });
 
-  $prevButton.when(additionalPrevButtonClasses, 'addClass', additionalPrevButtonClasses);
-  $nextButton.when(additionalNextClasses, 'addClass', additionalNextClasses);
-  $fullscreenButton.when(additionalFullscreenClasses, 'addClass', additionalFullscreenClasses);
-  $closeButton.when(additionalCloseClasses, 'addClass', additionalCloseClasses);
-  $stage.when(additionalStageClasses, 'addClass', additionalStageClasses);
-  $index.when(additionalIndexClasses, 'addClass', additionalIndexClasses);
-  $loadingIndicator.when(additionalLoadingClasses, 'addClass', additionalLoadingClasses);
-  $background.when(additionalBackgroundClasses, 'addClass', additionalBackgroundClasses);
+  $prevButton.when(additionalClasses.prevButton, 'addClass', additionalClasses.prevButton);
+  $nextButton.when(additionalClasses.nextButton, 'addClass', additionalClasses.nextButton);
+  $fullscreenButton.when(additionalClasses.fullscreenButton, 'addClass', additionalClasses.fullscreenButton);
+  $closeButton.when(additionalClasses.closeButton, 'addClass', additionalClasses.closeButton);
+  $stage.when(additionalClasses.stage, 'addClass', additionalClasses.stage);
+  $index.when(additionalClasses.index, 'addClass', additionalClasses.index);
+  $loadingIndicator.when(additionalClasses.loading, 'addClass', additionalClasses.loading);
+  $background.when(additionalClasses.background, 'addClass', additionalClasses.background);
 
   $items.forEach(($item, index) => {
     $item.attr('data-jlightbox-id', index);
@@ -795,7 +791,7 @@ export default (opts = {}) => {
 
   $jlightbox
     .css('z-index', options.zIndex)
-    .when(additionalClasses, 'addClass', additionalClasses)
+    .when(additionalClasses.general, 'addClass', additionalClasses.general)
     .on('before-open', options.onBeforeOpen)
     .on('after-open', options.onAfterOpen)
     .on('before-close', options.onBeforeClose)
