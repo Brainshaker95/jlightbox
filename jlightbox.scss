@@ -174,21 +174,111 @@ $jlightbox-loading-animation-duration: 1200ms !default;
   }
 
   &__control {
+    display: none;
+    position: absolute;
+    top: 1em;
+    right: 1em;
+    z-index: 3;
+
     &-button {
-      position: absolute;
-      top: 1em;
-      right: 1em;
+      position: relative;
       width: 2.5em;
       height: 2.5em;
+      margin-left: 0.5em;
       padding: 0;
-      background: none;
+      background-color: transparent;
       border: 0;
       outline: 0;
       cursor: pointer;
-      z-index: 3;
 
       &:focus-visible {
         outline: 1px solid $jlightbox-button-focus-outline-color;
+      }
+
+      &--fullscreen {
+        .corner {
+          display: block;
+          position: absolute;
+          width: 15%;
+          height: 15%;
+          transition: border-color 300ms ease;
+
+          &--top-left {
+            top: 10%;
+            left: 10%;
+            border: {
+              top: 0.25em solid $jlightbox-button-color;
+              left: 0.25em solid $jlightbox-button-color;
+            };
+
+            :fullscreen & {
+              border: {
+                bottom: 0.25em solid $jlightbox-button-color;
+                right: 0.25em solid $jlightbox-button-color;
+                top: 0;
+                left: 0;
+              };
+            }
+          }
+
+          &--top-right {
+            top: 10%;
+            right: 10%;
+            border: {
+              top: 0.25em solid $jlightbox-button-color;
+              right: 0.25em solid $jlightbox-button-color;
+            };
+
+            :fullscreen & {
+              border: {
+                bottom: 0.25em solid $jlightbox-button-color;
+                left: 0.25em solid $jlightbox-button-color;
+                top: 0;
+                right: 0;
+              };
+            }
+          }
+
+          &--bottom-left {
+            bottom: 10%;
+            left: 10%;
+            border: {
+              bottom: 0.25em solid $jlightbox-button-color;
+              left: 0.25em solid $jlightbox-button-color;
+            };
+
+            :fullscreen & {
+              border: {
+                top: 0.25em solid $jlightbox-button-color;
+                right: 0.25em solid $jlightbox-button-color;
+                bottom: 0;
+                left: 0;
+              }
+            }
+          }
+
+          &--bottom-right {
+            bottom: 10%;
+            right: 10%;
+            border: {
+              bottom: 0.25em solid $jlightbox-button-color;
+              right: 0.25em solid $jlightbox-button-color;
+            };
+
+            :fullscreen & {
+              border: {
+                top: 0.25em solid $jlightbox-button-color;
+                left: 0.25em solid $jlightbox-button-color;
+                bottom: 0;
+                right: 0;
+              };
+            }
+          }
+        }
+
+        &:hover .corner {
+          border-color: $jlightbox-button-color-hover;
+        }
       }
 
       &--close {

@@ -10,12 +10,14 @@ const translate = (options, key) => {
       close: 'Close',
       next: 'Next Item',
       prev: 'Previous Item',
+      toggleFullscreen: 'Toggle fullscreen',
       ...(options.translations.en || {}),
     },
     de: {
       close: 'Schließen',
       next: 'Nächstes Element',
       prev: 'Vorheriges Element',
+      toggleFullscreen: 'Vollbild umschalten',
       ...(options.translations.de || {}),
     },
   };
@@ -40,17 +42,37 @@ const getPlaceholders = (string) => (string.match(/{{(.*?)}}/g) || []).map((matc
 const replacePlaceholders = (theString, options, params) => {
   let string = theString;
 
-  getPlaceholders(string).forEach((theKey, index) => {
+  getPlaceholders(string).forEach((theKey) => {
     const key = theKey.trim();
     const replaceRegEx = new RegExp(`{{ ${key} }}`, 'g');
 
     string = string.replace(
       replaceRegEx,
-      params.length && params[index] ? params[index] : translate(options, key),
+      params[key] || translate(options, key),
     );
   });
 
   return string;
+};
+
+const closeFullscreen = () => {
+  document.cancelFullScreen = document.cancelFullScreen || document.webkitCancelFullScreen
+    || document.mozCancelFullScreen || noop;
+
+  document.cancelFullScreen();
+};
+
+const toggleFullscreen = () => {
+  if (document.webkitIsFullScreen || document.mozFullScreen || false) {
+    closeFullscreen();
+  } else {
+    const element = document.documentElement;
+
+    element.requestFullScreen = element.requestFullScreen || element.webkitRequestFullScreen
+    || element.mozRequestFullScreen || noop;
+
+    element.requestFullScreen();
+  }
 };
 
 const template = (options) => {
@@ -59,6 +81,7 @@ const template = (options) => {
   let {
     prevButtonTemplate,
     nextButtonTemplate,
+    fullscreenButtonTemplate,
     closeButtonTemplate,
     loadingIndicatorTemplate,
   } = options;
@@ -95,6 +118,27 @@ const template = (options) => {
     nextButtonTemplate = replacePlaceholders(nextButtonTemplate, options);
   }
 
+  if (!fullscreenButtonTemplate) {
+    const toggleFullscreenText = translate(options, 'toggleFullscreen');
+
+    fullscreenButtonTemplate = `
+      <button
+        type="button"
+        class="${classPrefix}__control-button ${classPrefix}__control-button--fullscreen"
+        title="${toggleFullscreenText}"
+        aria-label="${toggleFullscreenText}"
+        data-jlightbox-fullscreen
+      >
+        <i class="corner corner--top-left"></i>
+        <i class="corner corner--top-right"></i>
+        <i class="corner corner--bottom-left"></i>
+        <i class="corner corner--bottom-right"></i>
+      </button>
+    `;
+  } else {
+    fullscreenButtonTemplate = replacePlaceholders(fullscreenButtonTemplate, options);
+  }
+
   if (!closeButtonTemplate) {
     const close = translate(options, 'close');
 
@@ -121,7 +165,10 @@ const template = (options) => {
       <div class="${classPrefix}__stage" data-jlightbox-stage></div>
       ${nextButtonTemplate}
       <div class="${classPrefix}__index" data-jlightbox-index></div>
-      ${closeButtonTemplate}
+      <div class="${classPrefix}__control" data-jlightbox-control>
+        ${fullscreenButtonTemplate}
+        ${closeButtonTemplate}
+      </div>
       ${loadingIndicatorTemplate}
       <div class="${classPrefix}__background" data-jlightbox-background></div>
       <div class="${classPrefix}__cache" data-jlightbox-cache></div>
@@ -398,6 +445,7 @@ export default (opts = {}) => {
     additionalClasses: '',
     additionalPrevButtonClasses: '',
     additionalNextClasses: '',
+    additionalFullscreenClasses: '',
     additionalCloseClasses: '',
     additionalStageClasses: '',
     additionalIndexClasses: '',
@@ -422,6 +470,7 @@ export default (opts = {}) => {
     template: '',
     prevButtonTemplate: '',
     nextButtonTemplate: '',
+    fullscreenButtonTemplate: '',
     closeButtonTemplate: '',
     loadingIndicatorTemplate: '',
     videoTypes: ['mp4', 'mpeg', 'webm'],
@@ -435,6 +484,7 @@ export default (opts = {}) => {
     additionalClasses,
     additionalPrevButtonClasses,
     additionalNextClasses,
+    additionalFullscreenClasses,
     additionalCloseClasses,
     additionalStageClasses,
     additionalIndexClasses,
@@ -457,6 +507,8 @@ export default (opts = {}) => {
   const $stage = $jlightbox.find('[data-jlightbox-stage]');
   const $prevButton = $jlightbox.find('[data-jlightbox-prev]');
   const $nextButton = $jlightbox.find('[data-jlightbox-next]');
+  const $control = $jlightbox.find('[data-jlightbox-control]');
+  const $fullscreenButton = $jlightbox.find('[data-jlightbox-fullscreen]');
   const $closeButton = $jlightbox.find('[data-jlightbox-close]');
   const $index = $jlightbox.find('[data-jlightbox-index]');
   const $loadingIndicator = $jlightbox.find('[data-jlightbox-loading]');
@@ -465,10 +517,10 @@ export default (opts = {}) => {
   const totalItemCount = $items.length;
 
   const updateIndex = (index) => {
-    $index.text(replacePlaceholders(options.indexText, options, [
-      index + 1,
-      totalItemCount,
-    ]));
+    $index.text(replacePlaceholders(options.indexText, options, {
+      current: index + 1,
+      total: totalItemCount,
+    }));
   };
 
   const open = (index) => {
@@ -488,7 +540,7 @@ export default (opts = {}) => {
 
     $prevButton.fadeIn(openAnimationDuration);
     $nextButton.fadeIn(openAnimationDuration);
-    $closeButton.fadeIn(openAnimationDuration);
+    $control.fadeIn(openAnimationDuration, noop, 'flex');
     $index.fadeIn(openAnimationDuration);
 
     $background.fadeIn(openAnimationDuration, () => {
@@ -526,6 +578,8 @@ export default (opts = {}) => {
       $video.get(0).pause();
     }
 
+    closeFullscreen();
+
     $jlightbox
       .trigger('before-close')
       .trigger('blur')
@@ -543,7 +597,7 @@ export default (opts = {}) => {
 
     $prevButton.fadeOut(closeAnimationDuration);
     $nextButton.fadeOut(closeAnimationDuration);
-    $closeButton.fadeOut(openAnimationDuration);
+    $control.fadeOut(openAnimationDuration);
     $index.fadeOut(openAnimationDuration);
 
     $background.fadeOut(closeAnimationDuration, () => {
@@ -724,6 +778,7 @@ export default (opts = {}) => {
 
   $prevButton.when(additionalPrevButtonClasses, 'addClass', additionalPrevButtonClasses);
   $nextButton.when(additionalNextClasses, 'addClass', additionalNextClasses);
+  $fullscreenButton.when(additionalFullscreenClasses, 'addClass', additionalFullscreenClasses);
   $closeButton.when(additionalCloseClasses, 'addClass', additionalCloseClasses);
   $stage.when(additionalStageClasses, 'addClass', additionalStageClasses);
   $index.when(additionalIndexClasses, 'addClass', additionalIndexClasses);
@@ -750,6 +805,7 @@ export default (opts = {}) => {
 
   $prevButton.on('click', goToPrev);
   $nextButton.on('click', goToNext);
+  $fullscreenButton.on('click', toggleFullscreen);
   $closeButton.on('click', close);
   $stage.on('click', close);
 
@@ -795,6 +851,10 @@ export default (opts = {}) => {
       resizeTimeout = setTimeout(() => handleResize($stage, options), options.resizeTimeoutDelay);
     })
     .on('keydown', ({ code }) => {
+      if (!$jlightbox.hasClass(`${classPrefix}--is-open`)) {
+        return;
+      }
+
       if (code === 'Escape') {
         close();
       } else if (code === 'ArrowLeft' || code === 'KeyA') {
@@ -802,8 +862,7 @@ export default (opts = {}) => {
       } else if (code === 'ArrowRight' || code === 'KeyD') {
         goToNext();
       } else if (code === 'KeyF') {
-        // TODO
-        // toggleFullscreen();
+        toggleFullscreen();
       } else if (code === 'KeyA') {
         // TODO
         // toggleAutoplay();
