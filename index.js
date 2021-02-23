@@ -10,6 +10,7 @@ const translate = (options, key) => {
       close: 'Close',
       next: 'Next Item',
       prev: 'Previous Item',
+      toggleAutoplay: 'Toggle autoplay',
       toggleFullscreen: 'Toggle fullscreen',
       ...(options.translations.en || {}),
     },
@@ -17,6 +18,7 @@ const translate = (options, key) => {
       close: 'Schließen',
       next: 'Nächstes Element',
       prev: 'Vorheriges Element',
+      toggleAutoplay: 'Automatische Wiedergabe umschalten',
       toggleFullscreen: 'Vollbild umschalten',
       ...(options.translations.de || {}),
     },
@@ -81,9 +83,11 @@ const template = (options) => {
   let {
     prevButton,
     nextButton,
+    autoplayButton,
     fullscreenButton,
     closeButton,
     loading,
+    progress,
   } = templates;
 
   if (!prevButton) {
@@ -118,15 +122,31 @@ const template = (options) => {
     nextButton = replacePlaceholders(nextButton, options);
   }
 
+  if (!autoplayButton) {
+    const autoplay = translate(options, 'toggleAutoplay');
+
+    autoplayButton = `
+      <button
+        type="button"
+        class="${classPrefix}__control-button ${classPrefix}__control-button--autoplay"
+        title="${autoplay}"
+        aria-label="${autoplay}"
+        data-jlightbox-autoplay
+      ></button>
+    `;
+  } else {
+    autoplayButton = replacePlaceholders(autoplayButton, options);
+  }
+
   if (!fullscreenButton) {
-    const toggleFullscreenText = translate(options, 'toggleFullscreen');
+    const fullscreen = translate(options, 'toggleFullscreen');
 
     fullscreenButton = `
       <button
         type="button"
         class="${classPrefix}__control-button ${classPrefix}__control-button--fullscreen"
-        title="${toggleFullscreenText}"
-        aria-label="${toggleFullscreenText}"
+        title="${fullscreen}"
+        aria-label="${fullscreen}"
         data-jlightbox-fullscreen
       >
         <i class="corner corner--top-left"></i>
@@ -159,6 +179,12 @@ const template = (options) => {
     loading = `<div class="${classPrefix}__loading" data-jlightbox-loading></div>`;
   }
 
+  if (!progress) {
+    progress = `<div class="${classPrefix}__progress" data-jlightbox-progress>
+      <div class="${classPrefix}__progress-inner" data-jlightbox-progress-inner></div>
+    </div>`;
+  }
+
   return `
     <div class="${classPrefix}" aria-hidden="true">
       ${prevButton}
@@ -166,10 +192,12 @@ const template = (options) => {
       ${nextButton}
       <div class="${classPrefix}__index" data-jlightbox-index></div>
       <div class="${classPrefix}__control" data-jlightbox-control>
+        ${autoplayButton}
         ${fullscreenButton}
         ${closeButton}
       </div>
       ${loading}
+      ${progress}
       <div class="${classPrefix}__background" data-jlightbox-background></div>
       <div class="${classPrefix}__cache" data-jlightbox-cache></div>
     </div>
@@ -446,13 +474,16 @@ export default (opts = {}) => {
       general: '',
       prevButton: '',
       nextButton: '',
+      autoplayButton: '',
       fullscreenButton: '',
       closeButton: '',
       stage: '',
       index: '',
       loading: '',
+      progress: '',
       background: '',
     },
+    autoplayDuration: 5000,
     openAnimationDuration: 500,
     closeAnimationDuration: 500,
     slideAnimationDuration: 500,
@@ -473,9 +504,11 @@ export default (opts = {}) => {
       general: '',
       prevButton: '',
       nextButton: '',
+      autoplayButton: '',
       fullscreenButton: '',
       closeButton: '',
       loading: '',
+      progress: '',
     },
     videoTypes: ['mp4', 'mpeg', 'webm'],
     indexText: '{{ current }} / {{ total }}',
@@ -504,10 +537,13 @@ export default (opts = {}) => {
   const $prevButton = $jlightbox.find('[data-jlightbox-prev]');
   const $nextButton = $jlightbox.find('[data-jlightbox-next]');
   const $control = $jlightbox.find('[data-jlightbox-control]');
+  const $autoplayButton = $jlightbox.find('[data-jlightbox-autoplay]');
   const $fullscreenButton = $jlightbox.find('[data-jlightbox-fullscreen]');
   const $closeButton = $jlightbox.find('[data-jlightbox-close]');
   const $index = $jlightbox.find('[data-jlightbox-index]');
   const $loadingIndicator = $jlightbox.find('[data-jlightbox-loading]');
+  const $progress = $jlightbox.find('[data-jlightbox-progress]');
+  const $progressInner = $jlightbox.find('[data-jlightbox-progress-inner]');
   const $background = $jlightbox.find('[data-jlightbox-background]');
   const $cache = $jlightbox.find('[data-jlightbox-cache]');
   const totalItemCount = $items.length;
@@ -517,6 +553,40 @@ export default (opts = {}) => {
       current: index + 1,
       total: totalItemCount,
     }));
+  };
+
+  const stopAutoplay = () => {
+    $progress.hide();
+    $progressInner.stop();
+    $progressInner.data('busy', false);
+    $jlightbox.data('autoplay', false);
+    $autoplayButton.removeClass(`${classPrefix}__control-button--autoplay-is-active`);
+  };
+
+  const handleAutoplay = (callback) => {
+    if (!$jlightbox.data('autoplay')
+      || $progressInner.data('busy')
+      || $jlightbox.data('current-index') === totalItemCount - 1) {
+      stopAutoplay();
+
+      return;
+    }
+
+    $progress.show();
+
+    $progressInner
+      .data('busy', true)
+      .width(0)
+      .stop()
+      .animate({ width: `${$progress.width()}px` }, options.autoplayDuration, () => {
+        $progressInner.data('busy', false);
+
+        if ($jlightbox.data('autoplay')) {
+          callback();
+        } else {
+          stopAutoplay();
+        }
+      }, 'linear');
   };
 
   const open = (index) => {
@@ -575,6 +645,7 @@ export default (opts = {}) => {
     }
 
     closeFullscreen();
+    stopAutoplay();
 
     $jlightbox
       .trigger('before-close')
@@ -704,6 +775,8 @@ export default (opts = {}) => {
         2 * options.stagePaddingY,
       );
 
+      handleAutoplay(() => goTo(indexToGoTo + 1));
+
       $realContent.css({
         opacity: 1,
         ...targetDimensions,
@@ -768,17 +841,29 @@ export default (opts = {}) => {
 
   const goToLast = () => goTo($items.length - 1);
 
+  const toggleAutoplay = () => {
+    if (!$jlightbox.data('autoplay')) {
+      $jlightbox.data('autoplay', true);
+      $autoplayButton.addClass(`${classPrefix}__control-button--autoplay-is-active`);
+      handleAutoplay(goToNext);
+    } else {
+      stopAutoplay();
+    }
+  };
+
   // TODO: Add drag control
   // $stage.on('dragstart', `.${classPrefix}__item--real`, (event) => {
   // });
 
   $prevButton.when(additionalClasses.prevButton, 'addClass', additionalClasses.prevButton);
   $nextButton.when(additionalClasses.nextButton, 'addClass', additionalClasses.nextButton);
+  $autoplayButton.when(additionalClasses.autoplayButton, 'addClass', additionalClasses.autoplayButton);
   $fullscreenButton.when(additionalClasses.fullscreenButton, 'addClass', additionalClasses.fullscreenButton);
   $closeButton.when(additionalClasses.closeButton, 'addClass', additionalClasses.closeButton);
   $stage.when(additionalClasses.stage, 'addClass', additionalClasses.stage);
   $index.when(additionalClasses.index, 'addClass', additionalClasses.index);
   $loadingIndicator.when(additionalClasses.loading, 'addClass', additionalClasses.loading);
+  $progress.when(additionalClasses.progress, 'addClass', additionalClasses.progress);
   $background.when(additionalClasses.background, 'addClass', additionalClasses.background);
 
   $items.forEach(($item, index) => {
@@ -801,6 +886,7 @@ export default (opts = {}) => {
 
   $prevButton.on('click', goToPrev);
   $nextButton.on('click', goToNext);
+  $autoplayButton.on('click', toggleAutoplay);
   $fullscreenButton.on('click', toggleFullscreen);
   $closeButton.on('click', close);
   $stage.on('click', close);
@@ -851,7 +937,8 @@ export default (opts = {}) => {
         return;
       }
 
-      if (code === 'Escape') {
+      if (code === 'Escape' || code === 'ArrowUp' || code === 'ArrowDown'
+        || code === 'KeyW' || code === 'KeyS') {
         close();
       } else if (code === 'ArrowLeft' || code === 'KeyA') {
         goToPrev();
@@ -859,9 +946,8 @@ export default (opts = {}) => {
         goToNext();
       } else if (code === 'KeyF') {
         toggleFullscreen();
-      } else if (code === 'KeyA') {
-        // TODO
-        // toggleAutoplay();
+      } else if (code === 'KeyP') {
+        toggleAutoplay();
       } else if (code === 'KeyG') {
         // TODO
         // toggleGallery();

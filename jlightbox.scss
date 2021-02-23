@@ -5,6 +5,7 @@ $jlightbox-button-color: #FFF !default;
 $jlightbox-button-color-hover: #888 !default;
 $jlightbox-button-focus-outline-color: #FFF !default;
 $jlightbox-index-color: #FFF !default;
+$jlightbox-progress-color: #FFF !default;
 $jlightbox-loading-color: #FFF !default;
 $jlightbox-loading-animation-duration: 1200ms !default;
 
@@ -50,7 +51,7 @@ $jlightbox-loading-animation-duration: 1200ms !default;
 
   &__cache {
     position: absolute;
-    left: 200vw;
+    left: 500vw;
   }
 
   &__index {
@@ -90,6 +91,26 @@ $jlightbox-loading-animation-duration: 1200ms !default;
       width: 100vw;
       height: 100vh;
       pointer-events: none;
+    }
+  }
+
+  &__progress {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0.25em;
+    background: transparent;
+    z-index: 3;
+
+    &-inner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 100%;
+      background: $jlightbox-progress-color;
     }
   }
 
@@ -193,6 +214,63 @@ $jlightbox-loading-animation-duration: 1200ms !default;
 
       &:focus-visible {
         outline: 1px solid $jlightbox-button-focus-outline-color;
+      }
+
+      &--autoplay {
+        &::before,
+        &::after {
+          position: absolute;
+          content: '';
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          transition: border-color 300ms ease;
+        }
+
+        &::before {
+          width: 0;
+          height: 0;
+          border: {
+            left: 1.5em solid $jlightbox-button-color;
+            top: 1em solid transparent;
+            bottom: 1em solid transparent;
+          };
+        }
+
+        &:hover {
+          &::before,
+          &::after {
+            border-left: 1.5em solid $jlightbox-button-color-hover;
+          }
+        }
+
+        &-is-active {
+          &::before,
+          &::after {
+            width: 0.25em;
+            height: 80%;
+            border: 0;
+            border-radius: 0.25em;
+            background-color: $jlightbox-button-color;
+            transition: background-color 300ms ease;
+          }
+
+          &::before {
+            left: 35%;
+          }
+
+          &::after {
+            left: 65%;
+          }
+
+          &:hover {
+            &::before,
+            &::after {
+              border: 0;
+              background-color: $jlightbox-button-color-hover;
+            }
+          }
+        }
       }
 
       &--fullscreen {
