@@ -50,7 +50,7 @@ const replacePlaceholders = (theString, options, params) => {
 
     string = string.replace(
       replaceRegEx,
-      params[key] || translate(options, key),
+      params && params[key] ? params[key] : translate(options, key),
     );
   });
 
@@ -470,19 +470,6 @@ export default (opts = {}) => {
   const options = {
     selector: '[data-jlightbox]',
     classPrefix: 'jlightbox',
-    additionalClasses: {
-      general: '',
-      prevButton: '',
-      nextButton: '',
-      autoplayButton: '',
-      fullscreenButton: '',
-      closeButton: '',
-      stage: '',
-      index: '',
-      loading: '',
-      progress: '',
-      background: '',
-    },
     autoplayDuration: 5000,
     openAnimationDuration: 500,
     closeAnimationDuration: 500,
@@ -499,7 +486,26 @@ export default (opts = {}) => {
     onAfterClose: noop,
     onPrev: noop,
     onNext: noop,
+    language: '',
     translations: {},
+    videoTypes: ['mp4', 'mpeg', 'webm'],
+    indexText: '{{ current }} / {{ total }}',
+    zIndex: 20,
+    ...opts,
+    additionalClasses: {
+      general: '',
+      prevButton: '',
+      nextButton: '',
+      autoplayButton: '',
+      fullscreenButton: '',
+      closeButton: '',
+      stage: '',
+      index: '',
+      loading: '',
+      progress: '',
+      background: '',
+      ...opts.additionalClasses,
+    },
     templates: {
       general: '',
       prevButton: '',
@@ -509,11 +515,17 @@ export default (opts = {}) => {
       closeButton: '',
       loading: '',
       progress: '',
+      ...opts.templates,
     },
-    videoTypes: ['mp4', 'mpeg', 'webm'],
-    indexText: '{{ current }} / {{ total }}',
-    zIndex: 20,
-    ...opts,
+    keyboardControls: {
+      close: ['Escape', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'],
+      prev: ['ArrowLeft', 'KeyA'],
+      next: ['ArrowRight', 'KeyD'],
+      fullscreen: ['KeyF'],
+      autoplay: ['KeyP'],
+      gallery: ['KeyG'],
+      ...opts.keyboardControls,
+    },
   };
 
   const {
@@ -522,6 +534,7 @@ export default (opts = {}) => {
     openAnimationDuration,
     closeAnimationDuration,
     slideAnimationDuration,
+    keyboardControls,
   } = options;
 
   let resizeTimeout;
@@ -783,8 +796,8 @@ export default (opts = {}) => {
       });
 
       $clonedContent.css({
-        ...targetDimensions,
         opacity: 0,
+        ...targetDimensions,
       });
 
       if (insertionMethod === 'append') {
@@ -937,18 +950,17 @@ export default (opts = {}) => {
         return;
       }
 
-      if (code === 'Escape' || code === 'ArrowUp' || code === 'ArrowDown'
-        || code === 'KeyW' || code === 'KeyS') {
+      if (keyboardControls.close.includes(code)) {
         close();
-      } else if (code === 'ArrowLeft' || code === 'KeyA') {
+      } else if (keyboardControls.prev.includes(code)) {
         goToPrev();
-      } else if (code === 'ArrowRight' || code === 'KeyD') {
+      } else if (keyboardControls.next.includes(code)) {
         goToNext();
-      } else if (code === 'KeyF') {
+      } else if (keyboardControls.fullscreen.includes(code)) {
         toggleFullscreen();
-      } else if (code === 'KeyP') {
+      } else if (keyboardControls.autoplay.includes(code)) {
         toggleAutoplay();
-      } else if (code === 'KeyG') {
+      } else if (keyboardControls.gallery.includes(code)) {
         // TODO
         // toggleGallery();
       }
