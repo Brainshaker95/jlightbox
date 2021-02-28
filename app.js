@@ -47,6 +47,7 @@ $(() => {
       fullscreenButton: '',
       closeButton: '',
       loading: '',
+      progress: '',
     },
     keyboardControls: {
       close: ['Escape', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'],

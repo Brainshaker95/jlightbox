@@ -78,7 +78,11 @@ const toggleFullscreen = () => {
 };
 
 const template = (options) => {
-  const { classPrefix, templates } = options;
+  const {
+    classPrefix,
+    templates,
+    indexText,
+  } = options;
 
   let {
     prevButton,
@@ -90,114 +94,126 @@ const template = (options) => {
     progress,
   } = templates;
 
-  if (!prevButton) {
-    const prev = translate(options, 'prev');
+  if (prevButton !== null) {
+    if (!prevButton) {
+      const prev = translate(options, 'prev');
 
-    prevButton = `
-      <button
-        type="button"
-        class="${classPrefix}__arrow ${classPrefix}__arrow--prev"
-        title="${prev}"
-        aria-label="${prev}"
-        data-jlightbox-prev
-      ></button>
-    `;
-  } else {
-    prevButton = replacePlaceholders(prevButton, options);
+      prevButton = `
+        <button
+          type="button"
+          class="${classPrefix}__arrow ${classPrefix}__arrow--prev"
+          title="${prev}"
+          aria-label="${prev}"
+          data-jlightbox-prev
+        ></button>
+      `;
+    } else {
+      prevButton = replacePlaceholders(prevButton, options);
+    }
   }
 
-  if (!nextButton) {
-    const next = translate(options, 'next');
+  if (nextButton !== null) {
+    if (!nextButton) {
+      const next = translate(options, 'next');
 
-    nextButton = `
-      <button
-        type="button"
-        class="${classPrefix}__arrow ${classPrefix}__arrow--next"
-        title="${next}"
-        aria-label="${next}"
-        data-jlightbox-next
-      ></button>
-    `;
-  } else {
-    nextButton = replacePlaceholders(nextButton, options);
+      nextButton = `
+        <button
+          type="button"
+          class="${classPrefix}__arrow ${classPrefix}__arrow--next"
+          title="${next}"
+          aria-label="${next}"
+          data-jlightbox-next
+        ></button>
+      `;
+    } else {
+      nextButton = replacePlaceholders(nextButton, options);
+    }
   }
 
-  if (!autoplayButton) {
-    const autoplay = translate(options, 'toggleAutoplay');
+  if (autoplayButton !== null) {
+    if (!autoplayButton) {
+      const autoplay = translate(options, 'toggleAutoplay');
 
-    autoplayButton = `
-      <button
-        type="button"
-        class="${classPrefix}__control-button ${classPrefix}__control-button--autoplay"
-        title="${autoplay}"
-        aria-label="${autoplay}"
-        data-jlightbox-autoplay
-      ></button>
-    `;
-  } else {
-    autoplayButton = replacePlaceholders(autoplayButton, options);
+      autoplayButton = `
+        <button
+          type="button"
+          class="${classPrefix}__control-button ${classPrefix}__control-button--autoplay"
+          title="${autoplay}"
+          aria-label="${autoplay}"
+          data-jlightbox-autoplay
+        ></button>
+      `;
+    } else {
+      autoplayButton = replacePlaceholders(autoplayButton, options);
+    }
   }
 
-  if (!fullscreenButton) {
-    const fullscreen = translate(options, 'toggleFullscreen');
+  if (fullscreenButton !== null) {
+    if (!fullscreenButton) {
+      const fullscreen = translate(options, 'toggleFullscreen');
 
-    fullscreenButton = `
-      <button
-        type="button"
-        class="${classPrefix}__control-button ${classPrefix}__control-button--fullscreen"
-        title="${fullscreen}"
-        aria-label="${fullscreen}"
-        data-jlightbox-fullscreen
-      >
-        <i class="corner corner--top-left"></i>
-        <i class="corner corner--top-right"></i>
-        <i class="corner corner--bottom-left"></i>
-        <i class="corner corner--bottom-right"></i>
-      </button>
-    `;
-  } else {
-    fullscreenButton = replacePlaceholders(fullscreenButton, options);
+      fullscreenButton = `
+        <button
+          type="button"
+          class="${classPrefix}__control-button ${classPrefix}__control-button--fullscreen"
+          title="${fullscreen}"
+          aria-label="${fullscreen}"
+          data-jlightbox-fullscreen
+        >
+          <i class="corner corner--top-left"></i>
+          <i class="corner corner--top-right"></i>
+          <i class="corner corner--bottom-left"></i>
+          <i class="corner corner--bottom-right"></i>
+        </button>
+      `;
+    } else {
+      fullscreenButton = replacePlaceholders(fullscreenButton, options);
+    }
   }
 
-  if (!closeButton) {
-    const close = translate(options, 'close');
+  if (closeButton !== null) {
+    if (!closeButton) {
+      const close = translate(options, 'close');
 
-    closeButton = `
-      <button
-        type="button"
-        class="${classPrefix}__control-button ${classPrefix}__control-button--close"
-        title="${close}"
-        aria-label="${close}"
-        data-jlightbox-close
-      ></button>
-    `;
-  } else {
-    closeButton = replacePlaceholders(closeButton, options);
+      closeButton = `
+        <button
+          type="button"
+          class="${classPrefix}__control-button ${classPrefix}__control-button--close"
+          title="${close}"
+          aria-label="${close}"
+          data-jlightbox-close
+        ></button>
+      `;
+    } else {
+      closeButton = replacePlaceholders(closeButton, options);
+    }
   }
 
-  if (!loading) {
+  if (loading !== null && !loading) {
     loading = `<div class="${classPrefix}__loading" data-jlightbox-loading></div>`;
   }
 
-  if (!progress) {
+  if (progress !== null && !progress) {
     progress = `<div class="${classPrefix}__progress" data-jlightbox-progress>
       <div class="${classPrefix}__progress-inner" data-jlightbox-progress-inner></div>
     </div>`;
   }
 
+  const renderControl = autoplayButton || fullscreenButton || closeButton;
+
   return `
     <div class="${classPrefix}" aria-hidden="true">
-      ${prevButton}
+      ${prevButton || ''}
       <div class="${classPrefix}__stage" data-jlightbox-stage></div>
-      ${nextButton}
-      <div class="${classPrefix}__index" data-jlightbox-index></div>
-      <div class="${classPrefix}__control" data-jlightbox-control>
-        ${autoplayButton}
-        ${fullscreenButton}
-        ${closeButton}
-      </div>
-      ${loading}
-      ${progress}
+      ${nextButton || ''}
+      ${indexText !== null ? `<div class="${classPrefix}__index" data-jlightbox-index></div>` : ''}
+      ${renderControl ? `<div class="${classPrefix}__control" data-jlightbox-control>` : ''}
+        ${autoplayButton || ''}
+        ${fullscreenButton || ''}
+        ${closeButton || ''}
+      ${renderControl ? '</div>' : ''}
+      ${loading || ''}
+      ${progress || ''}
       <div class="${classPrefix}__background" data-jlightbox-background></div>
       <div class="${classPrefix}__cache" data-jlightbox-cache></div>
     </div>
@@ -562,6 +578,10 @@ export default (opts = {}) => {
   const totalItemCount = $items.length;
 
   const updateIndex = (index) => {
+    if (options.indexText === null) {
+      return;
+    }
+
     $index.text(replacePlaceholders(options.indexText, options, {
       current: index + 1,
       total: totalItemCount,
@@ -951,15 +971,25 @@ export default (opts = {}) => {
       }
 
       if (keyboardControls.close.includes(code)) {
-        close();
+        if (options.templates.closeButton !== null) {
+          close();
+        }
       } else if (keyboardControls.prev.includes(code)) {
-        goToPrev();
+        if (options.templates.prevButton !== null) {
+          goToPrev();
+        }
       } else if (keyboardControls.next.includes(code)) {
-        goToNext();
+        if (options.templates.nextButton !== null) {
+          goToNext();
+        }
       } else if (keyboardControls.fullscreen.includes(code)) {
-        toggleFullscreen();
+        if (options.templates.fullscreenButton !== null) {
+          toggleFullscreen();
+        }
       } else if (keyboardControls.autoplay.includes(code)) {
-        toggleAutoplay();
+        if (options.templates.autoplayButton !== null) {
+          toggleAutoplay();
+        }
       } else if (keyboardControls.gallery.includes(code)) {
         // TODO
         // toggleGallery();
@@ -974,5 +1004,7 @@ export default (opts = {}) => {
     goToNext,
     goToFirst,
     goToLast,
+    toggleFullscreen,
+    toggleAutoplay,
   };
 };
