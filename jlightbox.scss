@@ -1,3 +1,4 @@
+$jlightbox-prefix: 'jlightbox' !default;
 $jlightbox-background-color: rgba(0, 0, 0, 0.75) !default;
 $jlightbox-prev-arrow-offset: 1em !default;
 $jlightbox-next-arrow-offset: 1em !default;
@@ -5,11 +6,21 @@ $jlightbox-button-color: #FFF !default;
 $jlightbox-button-color-hover: #888 !default;
 $jlightbox-button-focus-outline-color: #FFF !default;
 $jlightbox-index-color: #FFF !default;
+$jlightbox-gallery-long-dimension: 100% !default;
+$jlightbox-gallery-short-dimension: 5em !default;
+$jlightbox-gallery-item-padding: 0.25em !default;
+$jlightbox-gallery-background-color: rgba(0, 0, 0, 0.3) !default;
+$jlightbox-gallery-item-focus-background-color: #02A002 !default;
+$jlightbox-gallery-item-active-background-color: #FF5E00 !default;
 $jlightbox-progress-color: #FFF !default;
 $jlightbox-loading-color: #FFF !default;
 $jlightbox-loading-animation-duration: 1200ms !default;
 
-.jlightbox {
+body.#{$jlightbox-prefix}-open {
+  overflow: hidden;
+}
+
+.#{$jlightbox-prefix} {
   @keyframes loader {
     from {
       transform: rotate(0deg);
@@ -34,7 +45,7 @@ $jlightbox-loading-animation-duration: 1200ms !default;
   &--is-open {
     pointer-events: all;
 
-    .jlightbox__item {
+    .#{$jlightbox-prefix}__item {
       pointer-events: all;
     }
   }
@@ -88,9 +99,87 @@ $jlightbox-loading-animation-duration: 1200ms !default;
 
     &-wrapper {
       position: absolute;
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       pointer-events: none;
+    }
+  }
+
+  &__gallery {
+    display: none;
+    position: relative;
+    overflow: scroll;
+    background-color: $jlightbox-gallery-background-color;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    z-index: 2;
+
+    &::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+
+    &--is-open {
+      display: flex;
+    }
+
+    .#{$jlightbox-prefix}__item {
+      position: relative;
+      box-sizing: border-box;
+      top: auto !important;
+      left: auto !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: cover;
+      padding: $jlightbox-gallery-item-padding;
+      opacity: 0;
+      transform: none !important;
+      cursor: pointer;
+
+      &:focus-visible {
+        background-color: $jlightbox-gallery-item-focus-background-color;
+      }
+
+      &--is-active {
+        background-color: $jlightbox-gallery-item-active-background-color;
+      }
+      // TODO: Add loading as after element?
+    }
+
+    &--top {
+      top: 0;
+      width: $jlightbox-gallery-long-dimension;
+      height: $jlightbox-gallery-short-dimension;
+    }
+
+    &--bottom {
+      top: 100%;
+      width: $jlightbox-gallery-long-dimension;
+      height: $jlightbox-gallery-short-dimension;
+      transform: translateY(-100%);
+    }
+
+    &--left,
+    &--right {
+      flex-wrap: wrap;
+
+      .#{$jlightbox-prefix}__item {
+        flex-basis: 50%;
+        max-width: 50%;
+      }
+    }
+
+    &--left {
+      left: 0;
+      width: $jlightbox-gallery-short-dimension;
+      height: $jlightbox-gallery-long-dimension;
+    }
+
+    &--right {
+      left: 100%;
+      width: $jlightbox-gallery-short-dimension;
+      height: $jlightbox-gallery-long-dimension;
+      transform: translateX(-100%);
     }
   }
 
