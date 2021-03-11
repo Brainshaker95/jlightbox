@@ -1,14 +1,36 @@
+$jlightbox-prefix: 'jlightbox' !default;
 $jlightbox-background-color: rgba(0, 0, 0, 0.75) !default;
 $jlightbox-prev-arrow-offset: 1em !default;
 $jlightbox-next-arrow-offset: 1em !default;
 $jlightbox-button-color: #FFF !default;
 $jlightbox-button-color-hover: #888 !default;
 $jlightbox-button-focus-outline-color: #FFF !default;
+$jlightbox-button-transition: 300ms ease !default;
 $jlightbox-index-color: #FFF !default;
+$jlightbox-gallery-long-dimension: 100% !default;
+$jlightbox-gallery-short-dimension: 5em !default;
+$jlightbox-gallery-item-padding: 0.25em !default;
+$jlightbox-gallery-background-color: rgba(0, 0, 0, 0.3) !default;
+$jlightbox-gallery-item-focus-background-color: #02A002 !default;
+$jlightbox-gallery-item-active-background-color: #FF5E00 !default;
+$jlightbox-progress-color: #FFF !default;
 $jlightbox-loading-color: #FFF !default;
 $jlightbox-loading-animation-duration: 1200ms !default;
 
-.jlightbox {
+body.#{$jlightbox-prefix}-open {
+  overflow: hidden;
+}
+
+[data-jlightbox] {
+  display: inline-flex;
+
+  > * {
+    display: block;
+    object-fit: cover;
+  }
+}
+
+.#{$jlightbox-prefix} {
   @keyframes loader {
     from {
       transform: rotate(0deg);
@@ -33,7 +55,7 @@ $jlightbox-loading-animation-duration: 1200ms !default;
   &--is-open {
     pointer-events: all;
 
-    .jlightbox__item {
+    .#{$jlightbox-prefix}__item {
       pointer-events: all;
     }
   }
@@ -50,7 +72,7 @@ $jlightbox-loading-animation-duration: 1200ms !default;
 
   &__cache {
     position: absolute;
-    left: 200vw;
+    left: 500vw;
   }
 
   &__index {
@@ -71,15 +93,12 @@ $jlightbox-loading-animation-duration: 1200ms !default;
   &__item {
     display: block;
     position: absolute;
+    object-fit: cover;
     top: 200vh;
     left: 200vw;
     outline: 0;
     transform: translate(-50%, -50%);
     z-index: 2;
-
-    &--video {
-      object-fit: cover;
-    }
 
     &--cloned {
       pointer-events: none;
@@ -87,9 +106,106 @@ $jlightbox-loading-animation-duration: 1200ms !default;
 
     &-wrapper {
       position: absolute;
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       pointer-events: none;
+    }
+  }
+
+  &__gallery {
+    display: none;
+    position: relative;
+    overflow: scroll;
+    background-color: $jlightbox-gallery-background-color;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    z-index: 2;
+
+    &::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+
+    &--is-open {
+      display: flex;
+    }
+
+    .#{$jlightbox-prefix}__item {
+      position: relative;
+      box-sizing: border-box;
+      top: auto !important;
+      left: auto !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: cover;
+      padding: $jlightbox-gallery-item-padding;
+      opacity: 0;
+      transform: none;
+      cursor: pointer;
+
+      &:focus-visible {
+        background-color: $jlightbox-gallery-item-focus-background-color;
+      }
+
+      &--is-active {
+        background-color: $jlightbox-gallery-item-active-background-color;
+      }
+    }
+
+    &--top {
+      top: 0;
+      width: $jlightbox-gallery-long-dimension;
+      height: $jlightbox-gallery-short-dimension;
+    }
+
+    &--bottom {
+      top: 100%;
+      width: $jlightbox-gallery-long-dimension;
+      height: $jlightbox-gallery-short-dimension;
+      transform: translateY(-100%);
+    }
+
+    &--left,
+    &--right {
+      flex-wrap: wrap;
+
+      .#{$jlightbox-prefix}__item {
+        flex-basis: 50%;
+        max-width: 50%;
+      }
+    }
+
+    &--left {
+      left: 0;
+      width: $jlightbox-gallery-short-dimension;
+      height: $jlightbox-gallery-long-dimension;
+    }
+
+    &--right {
+      left: 100%;
+      width: $jlightbox-gallery-short-dimension;
+      height: $jlightbox-gallery-long-dimension;
+      transform: translateX(-100%);
+    }
+  }
+
+  &__progress {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0.25em;
+    background: transparent;
+    z-index: 3;
+
+    &-inner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 100%;
+      background: $jlightbox-progress-color;
     }
   }
 
@@ -137,7 +253,7 @@ $jlightbox-loading-animation-duration: 1200ms !default;
       top: 1.25em;
       width: 2em;
       height: 2em;
-      transition: border-color 300ms ease;
+      transition: border-color $jlightbox-button-transition;
       border: {
         style: solid;
         width: 0.5em 0.5em 0 0;
@@ -174,21 +290,248 @@ $jlightbox-loading-animation-duration: 1200ms !default;
   }
 
   &__control {
+    display: none;
+    position: absolute;
+    top: 1em;
+    right: 1em;
+    z-index: 3;
+
     &-button {
-      position: absolute;
-      top: 1em;
-      right: 1em;
+      position: relative;
       width: 2.5em;
       height: 2.5em;
+      margin-left: 0.5em;
       padding: 0;
-      background: none;
+      background-color: transparent;
       border: 0;
       outline: 0;
       cursor: pointer;
-      z-index: 3;
 
       &:focus-visible {
         outline: 1px solid $jlightbox-button-focus-outline-color;
+      }
+
+      &--autoplay {
+        &::before,
+        &::after {
+          position: absolute;
+          content: '';
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          transition: border-color $jlightbox-button-transition;
+        }
+
+        &::before {
+          width: 0;
+          height: 0;
+          border: {
+            left: 1.5em solid $jlightbox-button-color;
+            top: 1em solid transparent;
+            bottom: 1em solid transparent;
+          };
+        }
+
+        &:hover {
+          &::before,
+          &::after {
+            border-left: 1.5em solid $jlightbox-button-color-hover;
+          }
+        }
+
+        &-is-active {
+          &::before,
+          &::after {
+            width: 0.25em;
+            height: 80%;
+            border: 0;
+            border-radius: 0.25em;
+            background-color: $jlightbox-button-color;
+            transition: background-color $jlightbox-button-transition;
+          }
+
+          &::before {
+            left: 35%;
+          }
+
+          &::after {
+            left: 65%;
+          }
+
+          &:hover {
+            &::before,
+            &::after {
+              border: 0;
+              background-color: $jlightbox-button-color-hover;
+            }
+          }
+        }
+      }
+
+      &--gallery {
+        .line {
+          display: block;
+          position: absolute;
+          width: 100%;
+
+          &::before,
+          &::after {
+            display: block;
+            position: absolute;
+            content: '';
+            width: 0.35em;
+            height: 0.35em;
+            background-color: $jlightbox-button-color;
+            transform: translate(-50%, -50%);
+            transition: background-color $jlightbox-button-transition;
+          }
+
+          &::before {
+            left: 22.5%;
+          }
+
+          &::after {
+            left: 77.5%;
+          }
+
+          &--top {
+            top: 22.5%;
+          }
+
+          &--center {
+            top: 50%;
+          }
+
+          &--bottom {
+            top: 77.5%;
+          }
+
+          &-middle {
+            display: block;
+            position: absolute;
+            width: 0.35em;
+            height: 0.35em;
+            left: 50%;
+            background-color: $jlightbox-button-color;
+            transform: translate(-50%, -50%);
+            transition: background-color $jlightbox-button-transition;
+          }
+        }
+
+        &:hover .line {
+          &::before,
+          &::after,
+          &-middle {
+            background-color: $jlightbox-button-color-hover;
+          }
+        }
+
+        &-is-active {
+          .line {
+            &::before,
+            &::after,
+            &-middle {
+              background-color: transparent;
+              outline: 1px solid $jlightbox-button-color;
+              transition: outline-color $jlightbox-button-transition;
+            }
+          }
+
+          &:hover .line {
+            &::before,
+            &::after,
+            &-middle {
+              background-color: transparent;
+              outline: 1px solid $jlightbox-button-color-hover;
+            }
+          }
+        }
+      }
+
+      &--fullscreen {
+        .corner {
+          display: block;
+          position: absolute;
+          width: 15%;
+          height: 15%;
+          transition: border-color $jlightbox-button-transition;
+
+          &--top-left {
+            top: 10%;
+            left: 10%;
+            border: {
+              top: 0.25em solid $jlightbox-button-color;
+              left: 0.25em solid $jlightbox-button-color;
+            };
+
+            :fullscreen & {
+              border: {
+                bottom: 0.25em solid $jlightbox-button-color;
+                right: 0.25em solid $jlightbox-button-color;
+                top: 0;
+                left: 0;
+              };
+            }
+          }
+
+          &--top-right {
+            top: 10%;
+            right: 10%;
+            border: {
+              top: 0.25em solid $jlightbox-button-color;
+              right: 0.25em solid $jlightbox-button-color;
+            };
+
+            :fullscreen & {
+              border: {
+                bottom: 0.25em solid $jlightbox-button-color;
+                left: 0.25em solid $jlightbox-button-color;
+                top: 0;
+                right: 0;
+              };
+            }
+          }
+
+          &--bottom-left {
+            bottom: 10%;
+            left: 10%;
+            border: {
+              bottom: 0.25em solid $jlightbox-button-color;
+              left: 0.25em solid $jlightbox-button-color;
+            };
+
+            :fullscreen & {
+              border: {
+                top: 0.25em solid $jlightbox-button-color;
+                right: 0.25em solid $jlightbox-button-color;
+                bottom: 0;
+                left: 0;
+              }
+            }
+          }
+
+          &--bottom-right {
+            bottom: 10%;
+            right: 10%;
+            border: {
+              bottom: 0.25em solid $jlightbox-button-color;
+              right: 0.25em solid $jlightbox-button-color;
+            };
+
+            :fullscreen & {
+              border: {
+                top: 0.25em solid $jlightbox-button-color;
+                left: 0.25em solid $jlightbox-button-color;
+                bottom: 0;
+                right: 0;
+              };
+            }
+          }
+        }
+
+        &:hover .corner {
+          border-color: $jlightbox-button-color-hover;
+        }
       }
 
       &--close {
@@ -202,7 +545,7 @@ $jlightbox-loading-animation-duration: 1200ms !default;
           height: 0.25em;
           border-radius: 0.25em;
           background-color: $jlightbox-button-color;
-          transition: background-color 300ms ease;
+          transition: background-color $jlightbox-button-transition;
         }
 
         &::before {

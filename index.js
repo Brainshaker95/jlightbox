@@ -1,5 +1,4 @@
-/* eslint-disable no-bitwise */
-import $, { noop } from 'jlight';
+import $, { generateHash, noop } from 'jlight';
 
 const translate = (options, key) => {
   let language = 'en';
@@ -10,12 +9,18 @@ const translate = (options, key) => {
       close: 'Close',
       next: 'Next Item',
       prev: 'Previous Item',
+      toggleAutoplay: 'Toggle autoplay',
+      toggleFullscreen: 'Toggle fullscreen',
+      toggleGallery: 'Toggle gallery',
       ...(options.translations.en || {}),
     },
     de: {
       close: 'Schließen',
       next: 'Nächstes Element',
       prev: 'Vorheriges Element',
+      toggleAutoplay: 'Automatische Wiedergabe umschalten',
+      toggleFullscreen: 'Vollbild umschalten',
+      toggleGallery: 'Galerie umschalten',
       ...(options.translations.de || {}),
     },
   };
@@ -29,100 +34,219 @@ const translate = (options, key) => {
   return translations[language] ? translations[language][key] : translations.en[key];
 };
 
-const getHash = (string) => Math.abs(string.split('').reduce((hash, b) => {
-  const a = ((hash << 5) - hash) + b.charCodeAt(0);
-
-  return a & a;
-}, 0));
+const getHash = ($item) => generateHash($item.attr('href') + $item.data('jlightbox-id'));
 
 const getPlaceholders = (string) => (string.match(/{{(.*?)}}/g) || []).map((match) => match.slice(2, -2));
 
 const replacePlaceholders = (theString, options, params) => {
   let string = theString;
 
-  getPlaceholders(string).forEach((theKey, index) => {
+  getPlaceholders(string).forEach((theKey) => {
     const key = theKey.trim();
     const replaceRegEx = new RegExp(`{{ ${key} }}`, 'g');
 
     string = string.replace(
       replaceRegEx,
-      params.length && params[index] ? params[index] : translate(options, key),
+      params && params[key] ? params[key] : translate(options, key),
     );
   });
 
   return string;
 };
 
-const template = (options) => {
-  const { classPrefix } = options;
+const closeFullscreen = () => {
+  document.cancelFullScreen = document.cancelFullScreen || document.webkitCancelFullScreen
+    || document.mozCancelFullScreen || noop;
 
-  let {
-    prevButtonTemplate,
-    nextButtonTemplate,
-    closeButtonTemplate,
-    loadingIndicatorTemplate,
+  document.cancelFullScreen();
+};
+
+const toggleFullscreen = () => {
+  if (document.webkitIsFullScreen || document.mozFullScreen || false) {
+    closeFullscreen();
+  } else {
+    const element = document.documentElement;
+
+    element.requestFullScreen = element.requestFullScreen || element.webkitRequestFullScreen
+    || element.mozRequestFullScreen || noop;
+
+    element.requestFullScreen();
+  }
+};
+
+const template = (options) => {
+  const {
+    classPrefix,
+    templates,
+    indexText,
+    galleryPosition,
+    appendArrowsToStage,
   } = options;
 
-  if (!prevButtonTemplate) {
-    const prev = translate(options, 'prev');
+  let {
+    prevButton,
+    nextButton,
+    autoplayButton,
+    galleryButton,
+    fullscreenButton,
+    closeButton,
+    loading,
+    progress,
+  } = templates;
 
-    prevButtonTemplate = `
-      <button
-        type="button"
-        class="${classPrefix}__arrow ${classPrefix}__arrow--prev"
-        title="${prev}"
-        aria-label="${prev}"
-        data-jlightbox-prev
-      ></button>
-    `;
-  } else {
-    prevButtonTemplate = replacePlaceholders(prevButtonTemplate, options);
+  if (prevButton !== null) {
+    if (!prevButton) {
+      const prev = translate(options, 'prev');
+
+      prevButton = `
+        <button
+          type="button"
+          class="${classPrefix}__arrow ${classPrefix}__arrow--prev"
+          title="${prev}"
+          aria-label="${prev}"
+          data-jlightbox-prev-button
+        ></button>
+      `;
+    } else {
+      prevButton = replacePlaceholders(prevButton, options);
+    }
   }
 
-  if (!nextButtonTemplate) {
-    const next = translate(options, 'next');
+  if (nextButton !== null) {
+    if (!nextButton) {
+      const next = translate(options, 'next');
 
-    nextButtonTemplate = `
-      <button
-        type="button"
-        class="${classPrefix}__arrow ${classPrefix}__arrow--next"
-        title="${next}"
-        aria-label="${next}"
-        data-jlightbox-next
-      ></button>
-    `;
-  } else {
-    nextButtonTemplate = replacePlaceholders(nextButtonTemplate, options);
+      nextButton = `
+        <button
+          type="button"
+          class="${classPrefix}__arrow ${classPrefix}__arrow--next"
+          title="${next}"
+          aria-label="${next}"
+          data-jlightbox-next-button
+        ></button>
+      `;
+    } else {
+      nextButton = replacePlaceholders(nextButton, options);
+    }
   }
 
-  if (!closeButtonTemplate) {
-    const close = translate(options, 'close');
+  if (autoplayButton !== null) {
+    if (!autoplayButton) {
+      const autoplay = translate(options, 'toggleAutoplay');
 
-    closeButtonTemplate = `
-      <button
-        type="button"
-        class="${classPrefix}__control-button ${classPrefix}__control-button--close"
-        title="${close}"
-        aria-label="${close}"
-        data-jlightbox-close
-      ></button>
-    `;
-  } else {
-    closeButtonTemplate = replacePlaceholders(closeButtonTemplate, options);
+      autoplayButton = `
+        <button
+          type="button"
+          class="${classPrefix}__control-button ${classPrefix}__control-button--autoplay"
+          title="${autoplay}"
+          aria-label="${autoplay}"
+          data-jlightbox-autoplay-button
+        ></button>
+      `;
+    } else {
+      autoplayButton = replacePlaceholders(autoplayButton, options);
+    }
   }
 
-  if (!loadingIndicatorTemplate) {
-    loadingIndicatorTemplate = `<div class="${classPrefix}__loading" data-jlightbox-loading></div>`;
+  if (galleryButton !== null) {
+    if (!galleryButton) {
+      const galleryText = translate(options, 'toggleGallery');
+
+      galleryButton = `
+        <button
+          type="button"
+          class="${classPrefix}__control-button ${classPrefix}__control-button--gallery"
+          title="${galleryText}"
+          aria-label="${galleryText}"
+          data-jlightbox-gallery-button
+        >
+          <i class="line line--top">
+            <i class="line-middle"></i>
+          </i>
+          <i class="line line--center">
+            <i class="line-middle"></i>
+          </i>
+          <i class="line line--bottom">
+            <i class="line-middle"></i>
+          </i>
+        </button>
+      `;
+    } else {
+      galleryButton = replacePlaceholders(galleryButton, options);
+    }
   }
+
+  if (fullscreenButton !== null) {
+    if (!fullscreenButton) {
+      const fullscreen = translate(options, 'toggleFullscreen');
+
+      fullscreenButton = `
+        <button
+          type="button"
+          class="${classPrefix}__control-button ${classPrefix}__control-button--fullscreen"
+          title="${fullscreen}"
+          aria-label="${fullscreen}"
+          data-jlightbox-fullscreen-button
+        >
+          <i class="corner corner--top-left"></i>
+          <i class="corner corner--top-right"></i>
+          <i class="corner corner--bottom-left"></i>
+          <i class="corner corner--bottom-right"></i>
+        </button>
+      `;
+    } else {
+      fullscreenButton = replacePlaceholders(fullscreenButton, options);
+    }
+  }
+
+  if (closeButton !== null) {
+    if (!closeButton) {
+      const close = translate(options, 'close');
+
+      closeButton = `
+        <button
+          type="button"
+          class="${classPrefix}__control-button ${classPrefix}__control-button--close"
+          title="${close}"
+          aria-label="${close}"
+          data-jlightbox-close-button
+        ></button>
+      `;
+    } else {
+      closeButton = replacePlaceholders(closeButton, options);
+    }
+  }
+
+  if (loading !== null && !loading) {
+    loading = `<div class="${classPrefix}__loading" data-jlightbox-loading></div>`;
+  }
+
+  if (progress !== null && !progress) {
+    progress = `<div class="${classPrefix}__progress" data-jlightbox-progress>
+      <div class="${classPrefix}__progress-inner" data-jlightbox-progress-inner></div>
+    </div>`;
+  }
+
+  const renderControl = autoplayButton || galleryButton || fullscreenButton || closeButton;
 
   return `
     <div class="${classPrefix}" aria-hidden="true">
-      ${prevButtonTemplate}
-      <div class="${classPrefix}__stage" data-jlightbox-stage></div>
-      ${nextButtonTemplate}
-      <div class="${classPrefix}__index" data-jlightbox-index></div>
-      ${closeButtonTemplate}
-      ${loadingIndicatorTemplate}
+      ${!appendArrowsToStage ? (prevButton || '') : ''}
+      <div class="${classPrefix}__stage" data-jlightbox-stage>
+        ${appendArrowsToStage ? (prevButton || '') : ''}
+        ${appendArrowsToStage ? (nextButton || '') : ''}
+      </div>
+      ${!appendArrowsToStage ? (nextButton || '') : ''}
+      ${indexText !== null ? `<div class="${classPrefix}__index" data-jlightbox-index></div>` : ''}
+      ${renderControl ? `<div class="${classPrefix}__control" data-jlightbox-control>` : ''}
+        ${autoplayButton || ''}
+        ${galleryButton || ''}
+        ${fullscreenButton || ''}
+        ${closeButton || ''}
+      ${renderControl ? '</div>' : ''}
+      ${loading || ''}
+      ${progress || ''}
+      ${templates.gallery !== null ? `<div class="${classPrefix}__gallery ${classPrefix}__gallery--${galleryPosition}" data-jlightbox-gallery></div>` : ''}
       <div class="${classPrefix}__background" data-jlightbox-background></div>
       <div class="${classPrefix}__cache" data-jlightbox-cache></div>
     </div>
@@ -142,22 +266,21 @@ const getOriginalDimensions = ($originalItem) => {
   };
 };
 
-const getTargetDimensions = ($item, paddingX, paddingY) => {
-  const $window = $(window);
-  const innerWidth = $window.innerWidth();
-  const innerHeight = $window.innerHeight();
-  const contentWidth = $item.data('original-width');
-  const contentHeight = $item.data('original-height');
+const getTargetDimensions = ($item, $stage, paddingX, paddingY) => {
+  const stageWidth = $stage.width();
+  const stageHeight = $stage.height();
+  const contentWidth = $item.data('jlightbox-original-width');
+  const contentHeight = $item.data('jlightbox-original-height');
   let targetWidth = contentWidth;
   let targetHeight = contentHeight;
 
-  if (targetWidth > innerWidth - paddingX) {
-    targetWidth = innerWidth - paddingX;
+  if (targetWidth > stageWidth - paddingX) {
+    targetWidth = stageWidth - paddingX;
     targetHeight = contentHeight * (targetWidth / contentWidth);
   }
 
-  if (targetHeight > innerHeight - paddingY) {
-    targetHeight = innerHeight - paddingY;
+  if (targetHeight > stageHeight - paddingY) {
+    targetHeight = stageHeight - paddingY;
     targetWidth = contentWidth * (targetHeight / contentHeight);
   }
 
@@ -170,21 +293,23 @@ const getTargetDimensions = ($item, paddingX, paddingY) => {
 };
 
 const handleResize = ($stage, options) => {
-  const $window = $(window);
   const $realContent = $stage.find(`.${options.classPrefix}__item--real`);
   const $clonedContent = $stage.find(`.${options.classPrefix}__item--cloned`);
-  const originalWidth = $realContent.data('original-width');
-  const originalHeight = $realContent.data('original-height');
-  const innerWidth = $window.innerWidth();
-  const innerHeight = $window.innerHeight();
+  const $gallery = $stage.closest(`.${options.classPrefix}`).find('[data-jlightbox-gallery]');
+  const originalWidth = $realContent.data('jlightbox-original-width');
+  const originalHeight = $realContent.data('jlightbox-original-height');
+  const stageWidth = $stage.width();
+  const stageHeight = $stage.height();
   const paddingX = 2 * options.stagePaddingX;
   const paddingY = 2 * options.stagePaddingY;
   const currentWidth = $realContent.width();
   const currentHeight = $realContent.height();
+  const galleryIsHorizontal = options.galleryPosition === 'top'
+  || options.galleryPosition === 'bottom';
   let width;
   let height;
 
-  if (currentWidth > innerWidth - paddingX || currentWidth < originalWidth) {
+  if (currentWidth > stageWidth - paddingX || currentWidth < originalWidth) {
     width = `calc(100% - ${paddingX}px)`;
     height = 'auto';
   }
@@ -193,8 +318,8 @@ const handleResize = ($stage, options) => {
     width = `${originalWidth}px`;
   }
 
-  if (currentHeight > innerHeight - paddingY || currentHeight < originalHeight) {
-    height = `calc(100% - ${paddingY}px)`;
+  if (currentHeight > stageHeight - paddingY || currentHeight < originalHeight) {
+    height = `calc(100vh - ${paddingY + (galleryIsHorizontal ? $gallery.height() : 0)}px)`;
     width = 'auto';
   }
 
@@ -209,9 +334,9 @@ const handleResize = ($stage, options) => {
 
   const realWidth = $realContent.width();
 
-  if (realWidth > innerWidth - paddingX) {
+  if (realWidth > stageWidth - paddingX) {
     $realContent.css({
-      width: `${innerWidth - paddingX}px`,
+      width: `${stageWidth - paddingX}px`,
       height: 'auto',
     });
   }
@@ -288,16 +413,15 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
 
   $originalItem.css('z-index', zIndex + 1);
   $loadingIndicator.stop().fadeIn(200);
-  window.location.hash = getHash($originalItem.attr('href'));
+  window.location.hash = getHash($originalItem);
 
   $stage
-    .empty()
-    .append($itemWrapper);
+    .find(`.${classPrefix}__item-wrapper`)
+    .remove();
 
-  $clonedContent.css({
-    opacity: 1,
-    ...originalDimensions,
-  });
+  $stage.append($itemWrapper);
+  $realContent.attr('draggable', false);
+  $clonedContent.css({ ...originalDimensions });
 
   const onContentLoad = () => {
     if (!$stage.closest(`.${classPrefix}--is-open`).length
@@ -305,13 +429,14 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
       return;
     }
 
-    $realContent.data('original-width', $realContent.width());
-    $realContent.data('original-height', $realContent.height());
+    $realContent.data('jlightbox-original-width', $realContent.width());
+    $realContent.data('jlightbox-original-height', $realContent.height());
     $originalItem.css('z-index', null);
     $loadingIndicator.stop().fadeOut(200);
 
     const targetDimensions = getTargetDimensions(
       $realContent,
+      $stage,
       2 * stagePaddingX,
       2 * stagePaddingY,
     );
@@ -323,6 +448,10 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
       })
       .delay(50)
       .then(() => {
+        if (options.hideOriginalWhenOpened) {
+          $originalItem.css('opacity', 0);
+        }
+
         $realContent.stop().animate({
           opacity: 1,
           ...targetDimensions,
@@ -333,7 +462,6 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
       .delay(50)
       .then(() => {
         $clonedContent.stop().animate({
-          opacity: 0,
           ...targetDimensions,
         }, openAnimationDuration, noop, openAnimationType);
       });
@@ -369,6 +497,10 @@ const doCloseAnimation = ($originalItem, $stage, options) => {
     opacity: 0,
     ...originalDimensions,
   }, closeAnimationDuration, () => {
+    if (options.hideOriginalWhenOpened) {
+      $originalItem.css('opacity', 1);
+    }
+
     if (!$cache.find(`[data-jlightbox-cached-id="${index}"]`).length) {
       $originalItem.trigger('focus');
       $realContent.attr('data-jlightbox-cached-id', index);
@@ -379,14 +511,13 @@ const doCloseAnimation = ($originalItem, $stage, options) => {
         .append($clonedContent);
 
       $realContent.css({
-        width: `${$realContent.data('original-width')}px`,
-        height: `${$realContent.data('original-height')}px`,
+        width: `${$realContent.data('jlightbox-original-width')}px`,
+        height: `${$realContent.data('jlightbox-original-height')}px`,
       });
     }
   }, closeAnimationType);
 
   $clonedContent.stop().animate({
-    opacity: 1,
     ...originalDimensions,
   }, closeAnimationDuration, noop, closeAnimationType);
 };
@@ -395,173 +526,210 @@ export default (opts = {}) => {
   const options = {
     selector: '[data-jlightbox]',
     classPrefix: 'jlightbox',
-    additionalClasses: '',
-    additionalPrevButtonClasses: '',
-    additionalNextClasses: '',
-    additionalCloseClasses: '',
-    additionalStageClasses: '',
-    additionalIndexClasses: '',
-    additionalLoadingClasses: '',
-    additionalBackgroundClasses: '',
+    autoplayDuration: 5000,
     openAnimationDuration: 500,
     closeAnimationDuration: 500,
     slideAnimationDuration: 500,
     openAnimationType: 'ease-out',
     closeAnimationType: 'ease-in',
+    swipeThreshold: 50,
+    hideOriginalWhenOpened: true,
+    galleryPosition: 'bottom',
+    galleryItemFadeInDuration: 100,
+    showGalleryByDefault: true,
+    appendArrowsToStage: true,
     stagePaddingX: 16,
     stagePaddingY: 16,
-    onBeforeShow: noop,
-    onAfterShow: noop,
-    onBeforeOpen: noop,
-    onAfterOpen: noop,
-    onBeforeClose: noop,
-    onAfterClose: noop,
-    onPrev: noop,
-    onNext: noop,
+    onBeforeOpen: null,
+    onAfterOpen: null,
+    onBeforeClose: null,
+    onAfterClose: null,
+    onBeforeSlide: null,
+    onAfterSlide: null,
+    onPrev: null,
+    onNext: null,
+    language: '',
     translations: {},
-    template: '',
-    prevButtonTemplate: '',
-    nextButtonTemplate: '',
-    closeButtonTemplate: '',
-    loadingIndicatorTemplate: '',
     videoTypes: ['mp4', 'mpeg', 'webm'],
     indexText: '{{ current }} / {{ total }}',
     zIndex: 20,
     ...opts,
+    additionalClasses: {
+      general: '',
+      prevButton: '',
+      nextButton: '',
+      autoplayButton: '',
+      galleryButton: '',
+      fullscreenButton: '',
+      closeButton: '',
+      stage: '',
+      gallery: '',
+      index: '',
+      loading: '',
+      progress: '',
+      background: '',
+      ...opts.additionalClasses,
+    },
+    templates: {
+      general: '',
+      prevButton: '',
+      nextButton: '',
+      autoplayButton: '',
+      galleryButton: '',
+      fullscreenButton: '',
+      closeButton: '',
+      loading: '',
+      gallery: '',
+      progress: '',
+      ...opts.templates,
+    },
+    keyboardControls: {
+      close: ['Escape', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'],
+      prev: ['ArrowLeft', 'KeyA'],
+      next: ['ArrowRight', 'KeyD'],
+      fullscreen: ['KeyF'],
+      autoplay: ['KeyP'],
+      gallery: ['KeyG'],
+      ...opts.keyboardControls,
+    },
   };
 
   const {
     classPrefix,
     additionalClasses,
-    additionalPrevButtonClasses,
-    additionalNextClasses,
-    additionalCloseClasses,
-    additionalStageClasses,
-    additionalIndexClasses,
-    additionalLoadingClasses,
-    additionalBackgroundClasses,
     openAnimationDuration,
     closeAnimationDuration,
     slideAnimationDuration,
+    swipeThreshold,
+    keyboardControls,
   } = options;
 
   let resizeTimeout;
   const $window = $(window);
   const $items = $(options.selector);
-  const $jlightbox = $(options.template
-    ? replacePlaceholders(options.template, options)
+  const $jlightbox = $(options.templates.general
+    ? replacePlaceholders(options.templates.general, options)
     : template(options));
 
   $('body').append($jlightbox);
 
+  const $body = $('body');
   const $stage = $jlightbox.find('[data-jlightbox-stage]');
-  const $prevButton = $jlightbox.find('[data-jlightbox-prev]');
-  const $nextButton = $jlightbox.find('[data-jlightbox-next]');
-  const $closeButton = $jlightbox.find('[data-jlightbox-close]');
+  const $prevButton = $jlightbox.find('[data-jlightbox-prev-button]');
+  const $nextButton = $jlightbox.find('[data-jlightbox-next-button]');
+  const $control = $jlightbox.find('[data-jlightbox-control]');
+  const $autoplayButton = $jlightbox.find('[data-jlightbox-autoplay-button]');
+  const $galleryButton = $jlightbox.find('[data-jlightbox-gallery-button]');
+  const $fullscreenButton = $jlightbox.find('[data-jlightbox-fullscreen-button]');
+  const $closeButton = $jlightbox.find('[data-jlightbox-close-button]');
   const $index = $jlightbox.find('[data-jlightbox-index]');
   const $loadingIndicator = $jlightbox.find('[data-jlightbox-loading]');
+  const $gallery = $jlightbox.find('[data-jlightbox-gallery]');
+  const $progress = $jlightbox.find('[data-jlightbox-progress]');
+  const $progressInner = $jlightbox.find('[data-jlightbox-progress-inner]');
   const $background = $jlightbox.find('[data-jlightbox-background]');
   const $cache = $jlightbox.find('[data-jlightbox-cache]');
   const totalItemCount = $items.length;
 
+  const getCurrentIndex = () => $jlightbox.data('jlightbox-current-index');
+
   const updateIndex = (index) => {
-    $index.text(replacePlaceholders(options.indexText, options, [
-      index + 1,
-      totalItemCount,
-    ]));
-  };
-
-  const open = (index) => {
-    $jlightbox
-      .trigger('before-open')
-      .trigger('focus')
-      .attr('aria-hidden', false)
-      .addClass(`${classPrefix}--is-opening`);
-
-    doOpenAnimation(
-      $items.filter(`[data-jlightbox-id="${index || '0'}"]`),
-      $stage,
-      options,
-    );
-
-    updateIndex(index);
-
-    $prevButton.fadeIn(openAnimationDuration);
-    $nextButton.fadeIn(openAnimationDuration);
-    $closeButton.fadeIn(openAnimationDuration);
-    $index.fadeIn(openAnimationDuration);
-
-    $background.fadeIn(openAnimationDuration, () => {
-      $jlightbox
-        .data('current-index', index)
-        .removeClass(`${classPrefix}--is-opening`)
-        .addClass(`${classPrefix}--is-open`)
-        .trigger('after-open');
-    });
-  };
-
-  const close = (event) => {
-    let canClose = true;
-
-    if (event) {
-      if (event.target === $closeButton.get(0)) {
-        canClose = true;
-      } else if (event.target !== $stage.get(0)) {
-        canClose = false;
-      }
-    }
-
-    if (!canClose
-      || $jlightbox.hasClass(`${classPrefix}--is-opening`)
-      || $jlightbox.hasClass(`${classPrefix}--is-closing`)) {
+    if (options.indexText === null) {
       return;
     }
 
-    const index = $jlightbox.data('current-index') || 0;
-    const $video = $jlightbox.find('video');
+    $index.text(replacePlaceholders(options.indexText, options, {
+      current: index + 1,
+      total: totalItemCount,
+    }));
+  };
 
-    window.location.hash = '';
+  const stopAutoplay = () => {
+    $progress.hide();
+    $progressInner.stop();
+    $progressInner.data('jlightbox-busy', false);
+    $jlightbox.data('jlightbox-autoplay', false);
+    $autoplayButton.removeClass(`${classPrefix}__control-button--autoplay-is-active`);
+  };
 
-    if ($video.length) {
-      $video.get(0).pause();
+  const handleAutoplay = (callback) => {
+    if (!$jlightbox.data('jlightbox-autoplay')
+      || $progressInner.data('jlightbox-busy')
+      || getCurrentIndex() === totalItemCount - 1) {
+      stopAutoplay();
+
+      return;
     }
 
-    $jlightbox
-      .trigger('before-close')
-      .trigger('blur')
-      .attr('aria-hidden', true)
-      .addClass(`${classPrefix}--is-closing`)
-      .removeClass(`${classPrefix}--is-open`);
+    $progress.show();
 
-    if (index || index === 0) {
-      doCloseAnimation(
-        $items.filter(`[data-jlightbox-id="${index || '0'}"]`),
-        $stage,
-        options,
-      );
+    $progressInner
+      .data('jlightbox-busy', true)
+      .width(0)
+      .stop()
+      .animate({ width: `${$progress.width()}px` }, options.autoplayDuration, () => {
+        $progressInner.data('jlightbox-busy', false);
+
+        if ($jlightbox.data('jlightbox-autoplay')) {
+          callback();
+        } else {
+          stopAutoplay();
+        }
+      }, 'linear');
+  };
+
+  const scrollToActiveGalleryItem = ($galleryItems, $activeItem) => {
+    const loadedCount = $galleryItems
+      .filter(($galleryItem) => $galleryItem.data('jlightbox-loaded')).length;
+
+    if (loadedCount !== $galleryItems.length) {
+      return;
     }
 
-    $prevButton.fadeOut(closeAnimationDuration);
-    $nextButton.fadeOut(closeAnimationDuration);
-    $closeButton.fadeOut(openAnimationDuration);
-    $index.fadeOut(openAnimationDuration);
+    $gallery.scrollTo($activeItem, options.slideAnimationDuration);
+  };
 
-    $background.fadeOut(closeAnimationDuration, () => {
-      $jlightbox
-        .removeClass(`${classPrefix}--is-closing`)
-        .trigger('after-close');
-    });
+  const setActiveGalleryItem = (index) => {
+    const $galleryItems = $gallery.find(`.${classPrefix}__item`);
+
+    if (!$galleryItems.length) {
+      return;
+    }
+
+    const $activeItem = $galleryItems.filter(`[data-jlightbox-gallery-id="${index}"]`);
+
+    scrollToActiveGalleryItem($galleryItems, $activeItem);
+
+    if ($activeItem.hasClass(`${classPrefix}__item--is-active`)) {
+      return;
+    }
+
+    $galleryItems.removeClass(`${classPrefix}__item--is-active`);
+    $activeItem.addClass(`${classPrefix}__item--is-active`);
   };
 
   const goTo = (indexToGoTo) => {
-    if ($stage.data('busy')) {
+    if ($stage.data('jlightbox-busy')) {
       return;
     }
 
-    const index = $jlightbox.data('current-index');
+    const index = getCurrentIndex();
     const $itemToGoTo = $items.filter(`[data-jlightbox-id="${indexToGoTo}"]`);
+    const hasItemToGoTo = $itemToGoTo.length;
 
-    if (!$itemToGoTo.length) {
+    if (options.hideOriginalWhenOpened) {
+      const $previousItem = $items.filter(`[data-jlightbox-id="${index}"]`);
+
+      if ($previousItem.length) {
+        $previousItem.css('opacity', 1);
+      }
+
+      if (hasItemToGoTo) {
+        $itemToGoTo.css('opacity', 0);
+      }
+    }
+
+    if (!hasItemToGoTo) {
       return;
     }
 
@@ -577,8 +745,13 @@ export default (opts = {}) => {
     const $itemWrapper = $(`<div class="${classPrefix}__item-wrapper">`);
 
     updateIndex(indexToGoTo);
-    $jlightbox.data('current-index', indexToGoTo);
-    $stage.data('busy', true);
+    setActiveGalleryItem(indexToGoTo);
+    $stage.data('jlightbox-busy', true);
+    $realContent.attr('draggable', false);
+
+    $jlightbox
+      .trigger('before-slide')
+      .data('jlightbox-current-index', indexToGoTo);
 
     $itemWrapper
       .append($clonedContent)
@@ -586,7 +759,7 @@ export default (opts = {}) => {
 
     $stage[insertionMethod]($itemWrapper);
     $loadingIndicator.stop().fadeIn(200);
-    window.location.hash = getHash($itemToGoTo.attr('href'));
+    window.location.hash = getHash($itemToGoTo);
 
     const $itemToCache = $currentItemWrapper.find(`.${classPrefix}__item--real`);
     const $clonedItemToCache = $currentItemWrapper.find(`.${classPrefix}__item--cloned`);
@@ -613,9 +786,7 @@ export default (opts = {}) => {
           });
         });
 
-      $itemWrapper.css({
-        left: '100vw',
-      });
+      $itemWrapper.css('left', '100vw');
     } else {
       $currentItemWrapper
         .css({
@@ -638,43 +809,43 @@ export default (opts = {}) => {
           });
         });
 
-      $itemWrapper.css({
-        right: '100vw',
-      });
+      $itemWrapper.css('right', '100vw');
     }
 
     const onContentLoad = () => {
-      $realContent.data('original-width', $realContent.width());
-      $realContent.data('original-height', $realContent.height());
+      $realContent.data('jlightbox-original-width', $realContent.width());
+      $realContent.data('jlightbox-original-height', $realContent.height());
       $loadingIndicator.stop().fadeOut(200);
 
       const targetDimensions = getTargetDimensions(
         $realContent,
+        $stage,
         2 * options.stagePaddingX,
         2 * options.stagePaddingY,
       );
+
+      handleAutoplay(() => goTo(indexToGoTo + 1));
 
       $realContent.css({
         opacity: 1,
         ...targetDimensions,
       });
 
-      $clonedContent.css({
-        ...targetDimensions,
-        opacity: 0,
-      });
+      $clonedContent.css({ ...targetDimensions });
 
       if (insertionMethod === 'append') {
         $itemWrapper.animate({
           left: '0px',
         }, slideAnimationDuration, () => {
-          $stage.data('busy', false);
+          $stage.data('jlightbox-busy', false);
+          $jlightbox.trigger('after-slide');
         });
       } else {
         $itemWrapper.animate({
           right: '0px',
         }, slideAnimationDuration, () => {
-          $stage.data('busy', false);
+          $stage.data('jlightbox-busy', false);
+          $jlightbox.trigger('after-slide');
         });
       }
     };
@@ -693,7 +864,7 @@ export default (opts = {}) => {
   };
 
   const goToPrev = () => {
-    const index = $jlightbox.data('current-index');
+    const index = getCurrentIndex();
     const prevIndex = index - 1;
 
     if (prevIndex >= 0) {
@@ -704,7 +875,7 @@ export default (opts = {}) => {
   };
 
   const goToNext = () => {
-    const index = $jlightbox.data('current-index');
+    const index = getCurrentIndex();
     const nextIndex = index + 1;
 
     if (nextIndex <= $items.length) {
@@ -718,42 +889,332 @@ export default (opts = {}) => {
 
   const goToLast = () => goTo($items.length - 1);
 
-  // TODO: Add drag control
-  // $stage.on('dragstart', `.${classPrefix}__item--real`, (event) => {
-  // });
-
-  $prevButton.when(additionalPrevButtonClasses, 'addClass', additionalPrevButtonClasses);
-  $nextButton.when(additionalNextClasses, 'addClass', additionalNextClasses);
-  $closeButton.when(additionalCloseClasses, 'addClass', additionalCloseClasses);
-  $stage.when(additionalStageClasses, 'addClass', additionalStageClasses);
-  $index.when(additionalIndexClasses, 'addClass', additionalIndexClasses);
-  $loadingIndicator.when(additionalLoadingClasses, 'addClass', additionalLoadingClasses);
-  $background.when(additionalBackgroundClasses, 'addClass', additionalBackgroundClasses);
-
-  $items.forEach(($item, index) => {
-    $item.attr('data-jlightbox-id', index);
-
-    if (window.location.hash === `#${getHash($item.attr('href'))}`) {
-      setTimeout(() => open(index), 150);
+  const toggleAutoplay = () => {
+    if (!$jlightbox.data('jlightbox-autoplay')) {
+      $jlightbox.data('jlightbox-autoplay', true);
+      $autoplayButton.addClass(`${classPrefix}__control-button--autoplay-is-active`);
+      handleAutoplay(goToNext);
+    } else {
+      stopAutoplay();
     }
-  });
+  };
 
-  $jlightbox
-    .css('z-index', options.zIndex)
-    .when(additionalClasses, 'addClass', additionalClasses)
-    .on('before-open', options.onBeforeOpen)
-    .on('after-open', options.onAfterOpen)
-    .on('before-close', options.onBeforeClose)
-    .on('after-close', options.onAfterClose)
-    .on('prev', options.onPrev)
-    .on('next', options.onNext);
+  const adjustStageSize = (galleryClosed) => {
+    const { galleryPosition } = options;
+    let stageWidth;
+    let stageHeight;
 
-  $prevButton.on('click', goToPrev);
-  $nextButton.on('click', goToNext);
-  $closeButton.on('click', close);
-  $stage.on('click', close);
+    if (galleryClosed) {
+      stageWidth = '100vw';
+      stageHeight = '100vh';
+    } else {
+      const galleryWidth = $gallery.width();
+      const galleryHeight = $gallery.height();
 
-  $items.on('click', (event) => {
+      stageWidth = `calc(100vw - ${galleryWidth}px)`;
+      stageHeight = `calc(100vh - ${galleryHeight}px)`;
+    }
+
+    if (galleryPosition === 'left' || galleryPosition === 'right') {
+      $stage.css('width', stageWidth);
+    } else {
+      $stage.css('height', stageHeight);
+    }
+
+    if (galleryPosition === 'top') {
+      $stage.css('bottom', 0);
+    } else if (galleryPosition === 'left') {
+      $stage.css('right', 0);
+    }
+
+    $window.trigger('resize');
+  };
+
+  const onGalleryItemLoaded = ({ $currentTarget }) => {
+    $currentTarget
+      .fadeIn(options.galleryItemFadeInDuration)
+      .data('jlightbox-loaded', true);
+
+    setActiveGalleryItem(getCurrentIndex());
+  };
+
+  const addItemsToGallery = () => {
+    $items.forEach(($item) => {
+      const itemIndex = $item.data('jlightbox-id');
+
+      if ($gallery.find(`[data-jlightbox-gallery-id="${itemIndex}"]`).length) {
+        return;
+      }
+
+      const {
+        $realContent,
+        $clonedContent,
+        isVideo,
+        isCached,
+      } = getContentFromItem(
+        $item,
+        $cache,
+        itemIndex,
+        options,
+      );
+
+      const $clonedItem = $realContent
+        .clone()
+        .attr('draggable', false)
+        .attr('tabindex', 0);
+
+      $clonedItem.attr('data-jlightbox-gallery-id', itemIndex);
+      $gallery.append($clonedItem);
+
+      if (!isCached) {
+        setTimeout(() => {
+          $cache
+            .append($realContent.clone().attr('data-jlightbox-cached-id', itemIndex))
+            .append($clonedContent.attr('data-jlightbox-cached-cached-id', itemIndex));
+        }, 0);
+      }
+
+      if (isVideo) {
+        $clonedItem.removeAttr('controls');
+        $clonedItem.on('loadeddata', onGalleryItemLoaded);
+      } else {
+        $clonedItem.on('load', onGalleryItemLoaded);
+      }
+
+      const onGalleryItemClick = () => {
+        if ($gallery.data('jlightbox-gallery-click-disabled')) {
+          return;
+        }
+
+        if (getCurrentIndex() !== itemIndex) {
+          goTo(itemIndex);
+        }
+      };
+
+      $clonedItem
+        .on('click', onGalleryItemClick)
+        .on('keydown', ({ code }) => {
+          if (code === 'Enter') {
+            $gallery.data('jlightbox-gallery-click-disabled', false);
+            onGalleryItemClick();
+          }
+        });
+    });
+  };
+
+  const initializeGallery = () => {
+    let startX;
+    let scrollLeft;
+    let isDragged;
+    let currentMouseX;
+
+    $gallery
+      .on('mousedown', ({ pageX }) => {
+        currentMouseX = pageX;
+        startX = currentMouseX - $gallery.offset().left;
+        scrollLeft = $gallery.scrollLeft();
+        isDragged = true;
+      })
+      .on('mouseleave', () => {
+        isDragged = false;
+      })
+      .on('mouseup', ({ pageX }) => {
+        isDragged = false;
+
+        $gallery.data(
+          'jlightbox-gallery-click-disabled',
+          Math.abs(pageX - currentMouseX) > 10,
+        );
+      })
+      .on('mousemove', (event) => {
+        if (!isDragged) {
+          return;
+        }
+
+        event.preventDefault();
+        $gallery.scrollLeft(scrollLeft - ((event.pageX - $gallery.offset().left) - startX));
+      })
+      .data('jlightbox-initialized', true);
+  };
+
+  const openGallery = () => {
+    $galleryButton.addClass(`${classPrefix}__control-button--gallery-is-active`);
+    $gallery.addClass(`${classPrefix}__gallery--is-open`);
+    $jlightbox.data('jlightbox-gallery', true);
+    $jlightbox.data('jlightbox-gallery-hidden', false);
+
+    setTimeout(() => {
+      addItemsToGallery();
+    }, options.openAnimationDuration + 200);
+
+    setActiveGalleryItem(getCurrentIndex());
+    adjustStageSize();
+
+    if (!$gallery.data('jlightbox-initialized')) {
+      initializeGallery();
+    }
+  };
+
+  const toggleGallery = () => {
+    if (!$jlightbox.data('jlightbox-gallery')) {
+      openGallery();
+
+      return;
+    }
+
+    adjustStageSize(true);
+    $galleryButton.removeClass(`${classPrefix}__control-button--gallery-is-active`);
+    $gallery.removeClass(`${classPrefix}__gallery--is-open`);
+    $jlightbox.data('jlightbox-gallery-hidden', true);
+    $jlightbox.data('jlightbox-gallery', false);
+  };
+
+  const onSwipeEnd = (pageX, startX) => {
+    if (!$stage.data('jlightbox-item-click-disabled')) {
+      return;
+    }
+
+    const offset = pageX - startX;
+
+    if (offset > swipeThreshold) {
+      goToPrev();
+    } else if (offset < -swipeThreshold) {
+      goToNext();
+    } else {
+      $stage.data('jlightbox-item-click-disabled', false);
+
+      return;
+    }
+
+    setTimeout(() => {
+      $stage.data('jlightbox-item-click-disabled', false);
+    }, 0);
+  };
+
+  const initSwipeControl = () => {
+    let startX;
+
+    $stage
+      .on('mouseleave', ({ pageX }) => onSwipeEnd(pageX, startX))
+      .on('mouseup', ({ pageX }) => onSwipeEnd(pageX, startX))
+      .on('mousedown', ({ pageX }) => {
+        startX = pageX;
+
+        $stage.data('jlightbox-item-click-disabled', true);
+      });
+  };
+
+  const open = (index) => {
+    $body.addClass(`${classPrefix}-open`);
+
+    $jlightbox
+      .trigger('before-open')
+      .trigger('focus')
+      .attr('aria-hidden', false)
+      .data('jlightbox-current-index', index)
+      .addClass(`${classPrefix}--is-opening`);
+
+    updateIndex(index);
+
+    if (options.showGalleryByDefault) {
+      if (!$jlightbox.data('jlightbox-gallery-hidden')) {
+        openGallery();
+      }
+    } else if ($jlightbox.data('jlightbox-gallery-hidden') === false) {
+      openGallery();
+    }
+
+    doOpenAnimation(
+      $items.filter(`[data-jlightbox-id="${index || '0'}"]`),
+      $stage,
+      options,
+    );
+
+    $prevButton.fadeIn(openAnimationDuration);
+    $nextButton.fadeIn(openAnimationDuration);
+    $control.fadeIn(openAnimationDuration, noop, 'flex');
+    $index.fadeIn(openAnimationDuration);
+
+    $background.fadeIn(openAnimationDuration, () => {
+      $jlightbox
+        .removeClass(`${classPrefix}--is-opening`)
+        .addClass(`${classPrefix}--is-open`)
+        .trigger('after-open');
+    });
+  };
+
+  const close = (event) => {
+    let canClose = true;
+
+    if (event) {
+      if (event.target === $closeButton.get(0)) {
+        canClose = true;
+      } else if (event.target !== $stage.get(0)) {
+        canClose = false;
+      }
+    }
+
+    if (!canClose
+      || $jlightbox.hasClass(`${classPrefix}--is-opening`)
+      || $jlightbox.hasClass(`${classPrefix}--is-closing`)
+      || $stage.data('jlightbox-item-click-disabled')) {
+      return;
+    }
+
+    const index = getCurrentIndex() || 0;
+    const $video = $jlightbox.find('video');
+    const scrollTop = $window.scrollTop();
+
+    window.location.hash = '';
+
+    $window.scrollTop(scrollTop);
+    window.history.replaceState('', document.title, window.location.pathname);
+
+    if ($video.length) {
+      $video.get(0).pause();
+    }
+
+    closeFullscreen();
+    stopAutoplay();
+
+    if ($jlightbox.data('jlightbox-gallery')) {
+      $galleryButton.removeClass(`${classPrefix}__control-button--gallery-is-active`);
+      $gallery.removeClass(`${classPrefix}__gallery--is-open`);
+      $jlightbox.data('jlightbox-gallery', false);
+    }
+
+    $body.removeClass(`${classPrefix}-open`);
+
+    $jlightbox
+      .trigger('before-close')
+      .trigger('blur')
+      .attr('aria-hidden', true)
+      .addClass(`${classPrefix}--is-closing`)
+      .removeClass(`${classPrefix}--is-open`);
+
+    if (index || index === 0) {
+      doCloseAnimation(
+        $items.filter(`[data-jlightbox-id="${index || '0'}"]`),
+        $stage,
+        options,
+      );
+    }
+
+    $prevButton.fadeOut(closeAnimationDuration);
+    $nextButton.fadeOut(closeAnimationDuration);
+    $control.fadeOut(openAnimationDuration);
+    $index.fadeOut(openAnimationDuration);
+
+    $background.fadeOut(closeAnimationDuration, () => {
+      adjustStageSize(false);
+
+      $jlightbox
+        .removeClass(`${classPrefix}--is-closing`)
+        .trigger('after-close');
+    });
+  };
+
+  const onItemClick = (event) => {
     event.preventDefault();
 
     if ($jlightbox.hasClass(`${classPrefix}--is-open`)
@@ -763,57 +1224,71 @@ export default (opts = {}) => {
     }
 
     open(event.$currentTarget.data('jlightbox-id'));
-  });
+  };
 
-  $window
-    .on('hashchange', () => {
-      if ($jlightbox.hasClass(`${classPrefix}--is-opening`)) {
-        return;
-      }
+  const onWindowHashchange = () => {
+    if ($jlightbox.hasClass(`${classPrefix}--is-opening`)) {
+      return;
+    }
 
-      $items.forEach(($item, index) => {
-        if (window.location.hash === `#${getHash($item.attr('href'))}`) {
-          if ($jlightbox.hasClass(`${classPrefix}--is-open`)) {
-            setTimeout(() => goTo(index), 150);
-          } else {
-            setTimeout(() => open(index), 150);
-          }
-        } else if (window.location.hash === '' && !$jlightbox.hasClass(`${classPrefix}--is-closing`)) {
-          setTimeout(close, 150);
+    $items.forEach(($item, index) => {
+      if (window.location.hash === `#${getHash($item)}`) {
+        if ($jlightbox.hasClass(`${classPrefix}--is-open`)) {
+          setTimeout(() => goTo(index), 150);
+        } else {
+          setTimeout(() => open(index), 150);
         }
-      });
-    })
-    .on('resize', () => {
-      if (!$jlightbox.hasClass(`${classPrefix}--is-open`)) {
-        return;
-      }
-
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-      }
-
-      resizeTimeout = setTimeout(() => handleResize($stage, options), options.resizeTimeoutDelay);
-    })
-    .on('keydown', ({ code }) => {
-      if (code === 'Escape') {
-        close();
-      } else if (code === 'ArrowLeft' || code === 'KeyA') {
-        goToPrev();
-      } else if (code === 'ArrowRight' || code === 'KeyD') {
-        goToNext();
-      } else if (code === 'KeyF') {
-        // TODO
-        // toggleFullscreen();
-      } else if (code === 'KeyA') {
-        // TODO
-        // toggleAutoplay();
-      } else if (code === 'KeyG') {
-        // TODO
-        // toggleGallery();
+      } else if (window.location.hash === '' && !$jlightbox.hasClass(`${classPrefix}--is-closing`)) {
+        setTimeout(close, 150);
       }
     });
+  };
 
-  return {
+  const onWindowResize = () => {
+    if (!$jlightbox.hasClass(`${classPrefix}--is-open`)) {
+      return;
+    }
+
+    if (resizeTimeout) {
+      clearTimeout(resizeTimeout);
+    }
+
+    resizeTimeout = setTimeout(() => handleResize($stage, options), options.resizeTimeoutDelay);
+  };
+
+  const onWindowKeydown = ({ code }) => {
+    if (!$jlightbox.hasClass(`${classPrefix}--is-open`)) {
+      return;
+    }
+
+    if (keyboardControls.close.includes(code)) {
+      if (options.templates.closeButton !== null) {
+        close();
+      }
+    } else if (keyboardControls.prev.includes(code)) {
+      if (options.templates.prevButton !== null) {
+        goToPrev();
+      }
+    } else if (keyboardControls.next.includes(code)) {
+      if (options.templates.nextButton !== null) {
+        goToNext();
+      }
+    } else if (keyboardControls.autoplay.includes(code)) {
+      if (options.templates.autoplayButton !== null) {
+        toggleAutoplay();
+      }
+    } else if (keyboardControls.gallery.includes(code)) {
+      if (options.templates.galleryButton !== null) {
+        toggleGallery();
+      }
+    } else if (keyboardControls.fullscreen.includes(code)) {
+      if (options.templates.fullscreenButton !== null) {
+        toggleFullscreen();
+      }
+    }
+  };
+
+  const lightbox = {
     open,
     close,
     goTo,
@@ -821,5 +1296,76 @@ export default (opts = {}) => {
     goToNext,
     goToFirst,
     goToLast,
+    toggleAutoplay,
+    toggleGallery,
+    toggleFullscreen,
+    getCurrentIndex,
+    destroy: () => {
+      $jlightbox.remove();
+
+      $items
+        .off('click', onItemClick)
+        .removeAttr('data-jlightbox-id');
+
+      $window
+        .off('hashchange', onWindowHashchange)
+        .off('resize', onWindowResize)
+        .off('keydown', onWindowKeydown);
+    },
   };
+
+  $prevButton.when(additionalClasses.prevButton, 'addClass', additionalClasses.prevButton);
+  $nextButton.when(additionalClasses.nextButton, 'addClass', additionalClasses.nextButton);
+  $autoplayButton.when(additionalClasses.autoplayButton, 'addClass', additionalClasses.autoplayButton);
+  $galleryButton.when(additionalClasses.galleryButton, 'addClass', additionalClasses.galleryButton);
+  $fullscreenButton.when(additionalClasses.fullscreenButton, 'addClass', additionalClasses.fullscreenButton);
+  $closeButton.when(additionalClasses.closeButton, 'addClass', additionalClasses.closeButton);
+  $stage.when(additionalClasses.stage, 'addClass', additionalClasses.stage);
+  $index.when(additionalClasses.index, 'addClass', additionalClasses.index);
+  $loadingIndicator.when(additionalClasses.loading, 'addClass', additionalClasses.loading);
+  $gallery.when(additionalClasses.gallery, 'addClass', additionalClasses.gallery);
+  $progress.when(additionalClasses.progress, 'addClass', additionalClasses.progress);
+  $background.when(additionalClasses.background, 'addClass', additionalClasses.background);
+
+  let hashedItemOpened = false;
+
+  $items.forEach(($item, index) => {
+    $item.attr('data-jlightbox-id', index);
+
+    if (window.location.hash === `#${getHash($item)}` && !hashedItemOpened) {
+      hashedItemOpened = true;
+
+      setTimeout(() => open(index), 150);
+    }
+  });
+
+  $jlightbox
+    .css('z-index', options.zIndex)
+    .when(additionalClasses.general, 'addClass', additionalClasses.general)
+    .when(options.onBeforeOpen !== null, 'on', 'before-open', () => options.onBeforeOpen(lightbox, getCurrentIndex()))
+    .when(options.onAfterOpen !== null, 'on', 'after-open', () => options.onAfterOpen(lightbox, getCurrentIndex()))
+    .when(options.onBeforeClose !== null, 'on', 'before-close', () => options.onBeforeClose(lightbox, getCurrentIndex()))
+    .when(options.onAfterClose !== null, 'on', 'after-close', () => options.onAfterClose(lightbox, getCurrentIndex()))
+    .when(options.onBeforeSlide !== null, 'on', 'before-slide', () => options.onBeforeSlide(lightbox, getCurrentIndex()))
+    .when(options.onAfterSlide !== null, 'on', 'after-slide', () => options.onAfterSlide(lightbox, getCurrentIndex()))
+    .when(options.onPrev !== null, 'on', 'prev', () => options.onPrev(lightbox, getCurrentIndex()))
+    .when(options.onNext !== null, 'on', 'next', () => options.onNext(lightbox, getCurrentIndex()));
+
+  $prevButton.on('click', goToPrev);
+  $nextButton.on('click', goToNext);
+  $autoplayButton.on('click', toggleAutoplay);
+  $galleryButton.on('click', toggleGallery);
+  $fullscreenButton.on('click', toggleFullscreen);
+  $closeButton.on('click', close);
+  $stage.on('click', close);
+  $items.on('click', onItemClick);
+
+  initSwipeControl();
+
+  $window
+    .on('hashchange', onWindowHashchange)
+    .on('resize', onWindowResize)
+    .on('keydown', onWindowKeydown);
+
+  return lightbox;
 };
