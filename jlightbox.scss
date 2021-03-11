@@ -5,6 +5,7 @@ $jlightbox-next-arrow-offset: 1em !default;
 $jlightbox-button-color: #FFF !default;
 $jlightbox-button-color-hover: #888 !default;
 $jlightbox-button-focus-outline-color: #FFF !default;
+$jlightbox-button-transition: 300ms ease !default;
 $jlightbox-index-color: #FFF !default;
 $jlightbox-gallery-long-dimension: 100% !default;
 $jlightbox-gallery-short-dimension: 5em !default;
@@ -18,6 +19,15 @@ $jlightbox-loading-animation-duration: 1200ms !default;
 
 body.#{$jlightbox-prefix}-open {
   overflow: hidden;
+}
+
+[data-jlightbox] {
+  display: inline-flex;
+
+  > * {
+    display: block;
+    object-fit: cover;
+  }
 }
 
 .#{$jlightbox-prefix} {
@@ -83,15 +93,12 @@ body.#{$jlightbox-prefix}-open {
   &__item {
     display: block;
     position: absolute;
+    object-fit: cover;
     top: 200vh;
     left: 200vw;
     outline: 0;
     transform: translate(-50%, -50%);
     z-index: 2;
-
-    &--video {
-      object-fit: cover;
-    }
 
     &--cloned {
       pointer-events: none;
@@ -133,7 +140,7 @@ body.#{$jlightbox-prefix}-open {
       object-fit: cover;
       padding: $jlightbox-gallery-item-padding;
       opacity: 0;
-      transform: none !important;
+      transform: none;
       cursor: pointer;
 
       &:focus-visible {
@@ -143,7 +150,6 @@ body.#{$jlightbox-prefix}-open {
       &--is-active {
         background-color: $jlightbox-gallery-item-active-background-color;
       }
-      // TODO: Add loading as after element?
     }
 
     &--top {
@@ -247,7 +253,7 @@ body.#{$jlightbox-prefix}-open {
       top: 1.25em;
       width: 2em;
       height: 2em;
-      transition: border-color 300ms ease;
+      transition: border-color $jlightbox-button-transition;
       border: {
         style: solid;
         width: 0.5em 0.5em 0 0;
@@ -313,7 +319,7 @@ body.#{$jlightbox-prefix}-open {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          transition: border-color 300ms ease;
+          transition: border-color $jlightbox-button-transition;
         }
 
         &::before {
@@ -341,7 +347,7 @@ body.#{$jlightbox-prefix}-open {
             border: 0;
             border-radius: 0.25em;
             background-color: $jlightbox-button-color;
-            transition: background-color 300ms ease;
+            transition: background-color $jlightbox-button-transition;
           }
 
           &::before {
@@ -362,13 +368,93 @@ body.#{$jlightbox-prefix}-open {
         }
       }
 
+      &--gallery {
+        .line {
+          display: block;
+          position: absolute;
+          width: 100%;
+
+          &::before,
+          &::after {
+            display: block;
+            position: absolute;
+            content: '';
+            width: 0.35em;
+            height: 0.35em;
+            background-color: $jlightbox-button-color;
+            transform: translate(-50%, -50%);
+            transition: background-color $jlightbox-button-transition;
+          }
+
+          &::before {
+            left: 22.5%;
+          }
+
+          &::after {
+            left: 77.5%;
+          }
+
+          &--top {
+            top: 22.5%;
+          }
+
+          &--center {
+            top: 50%;
+          }
+
+          &--bottom {
+            top: 77.5%;
+          }
+
+          &-middle {
+            display: block;
+            position: absolute;
+            width: 0.35em;
+            height: 0.35em;
+            left: 50%;
+            background-color: $jlightbox-button-color;
+            transform: translate(-50%, -50%);
+            transition: background-color $jlightbox-button-transition;
+          }
+        }
+
+        &:hover .line {
+          &::before,
+          &::after,
+          &-middle {
+            background-color: $jlightbox-button-color-hover;
+          }
+        }
+
+        &-is-active {
+          .line {
+            &::before,
+            &::after,
+            &-middle {
+              background-color: transparent;
+              outline: 1px solid $jlightbox-button-color;
+              transition: outline-color $jlightbox-button-transition;
+            }
+          }
+
+          &:hover .line {
+            &::before,
+            &::after,
+            &-middle {
+              background-color: transparent;
+              outline: 1px solid $jlightbox-button-color-hover;
+            }
+          }
+        }
+      }
+
       &--fullscreen {
         .corner {
           display: block;
           position: absolute;
           width: 15%;
           height: 15%;
-          transition: border-color 300ms ease;
+          transition: border-color $jlightbox-button-transition;
 
           &--top-left {
             top: 10%;
@@ -459,7 +545,7 @@ body.#{$jlightbox-prefix}-open {
           height: 0.25em;
           border-radius: 0.25em;
           background-color: $jlightbox-button-color;
-          transition: background-color 300ms ease;
+          transition: background-color $jlightbox-button-transition;
         }
 
         &::before {

@@ -1,6 +1,6 @@
 {
   "name": "jlightbox",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "JLight lightbox plugin",
   "author": "Patrick Rupp",
   "license": "MIT",
@@ -11,7 +11,7 @@
     "watch": "webpack --watch"
   },
   "dependencies": {
-    "jlight": "1.0.14"
+    "jlight": "1.0.16"
   },
   "devDependencies": {
     "css-loader": "^3.2.0",

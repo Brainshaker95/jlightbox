@@ -1,5 +1,4 @@
-/* eslint-disable no-bitwise */
-import $, { noop } from 'jlight';
+import $, { generateHash, noop } from 'jlight';
 
 const translate = (options, key) => {
   let language = 'en';
@@ -35,11 +34,7 @@ const translate = (options, key) => {
   return translations[language] ? translations[language][key] : translations.en[key];
 };
 
-const getHash = (string) => Math.abs(string.split('').reduce((hash, b) => {
-  const a = ((hash << 5) - hash) + b.charCodeAt(0);
-
-  return a & a;
-}, 0));
+const getHash = ($item) => generateHash($item.attr('href') + $item.data('jlightbox-id'));
 
 const getPlaceholders = (string) => (string.match(/{{(.*?)}}/g) || []).map((match) => match.slice(2, -2));
 
@@ -164,7 +159,17 @@ const template = (options) => {
           title="${galleryText}"
           aria-label="${galleryText}"
           data-jlightbox-gallery-button
-        ></button>
+        >
+          <i class="line line--top">
+            <i class="line-middle"></i>
+          </i>
+          <i class="line line--center">
+            <i class="line-middle"></i>
+          </i>
+          <i class="line line--bottom">
+            <i class="line-middle"></i>
+          </i>
+        </button>
       `;
     } else {
       galleryButton = replacePlaceholders(galleryButton, options);
@@ -408,18 +413,15 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
 
   $originalItem.css('z-index', zIndex + 1);
   $loadingIndicator.stop().fadeIn(200);
-  window.location.hash = getHash($originalItem.attr('href'));
+  window.location.hash = getHash($originalItem);
 
   $stage
     .find(`.${classPrefix}__item-wrapper`)
     .remove();
 
   $stage.append($itemWrapper);
-
-  $clonedContent.css({
-    opacity: 1,
-    ...originalDimensions,
-  });
+  $realContent.attr('draggable', false);
+  $clonedContent.css({ ...originalDimensions });
 
   const onContentLoad = () => {
     if (!$stage.closest(`.${classPrefix}--is-open`).length
@@ -446,6 +448,10 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
       })
       .delay(50)
       .then(() => {
+        if (options.hideOriginalWhenOpened) {
+          $originalItem.css('opacity', 0);
+        }
+
         $realContent.stop().animate({
           opacity: 1,
           ...targetDimensions,
@@ -456,7 +462,6 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
       .delay(50)
       .then(() => {
         $clonedContent.stop().animate({
-          opacity: 0,
           ...targetDimensions,
         }, openAnimationDuration, noop, openAnimationType);
       });
@@ -492,6 +497,10 @@ const doCloseAnimation = ($originalItem, $stage, options) => {
     opacity: 0,
     ...originalDimensions,
   }, closeAnimationDuration, () => {
+    if (options.hideOriginalWhenOpened) {
+      $originalItem.css('opacity', 1);
+    }
+
     if (!$cache.find(`[data-jlightbox-cached-id="${index}"]`).length) {
       $originalItem.trigger('focus');
       $realContent.attr('data-jlightbox-cached-id', index);
@@ -509,7 +518,6 @@ const doCloseAnimation = ($originalItem, $stage, options) => {
   }, closeAnimationType);
 
   $clonedContent.stop().animate({
-    opacity: 1,
     ...originalDimensions,
   }, closeAnimationDuration, noop, closeAnimationType);
 };
@@ -524,7 +532,11 @@ export default (opts = {}) => {
     slideAnimationDuration: 500,
     openAnimationType: 'ease-out',
     closeAnimationType: 'ease-in',
+    swipeThreshold: 50,
+    hideOriginalWhenOpened: true,
     galleryPosition: 'bottom',
+    galleryItemFadeInDuration: 100,
+    showGalleryByDefault: true,
     appendArrowsToStage: true,
     stagePaddingX: 16,
     stagePaddingY: 16,
@@ -588,6 +600,7 @@ export default (opts = {}) => {
     openAnimationDuration,
     closeAnimationDuration,
     slideAnimationDuration,
+    swipeThreshold,
     keyboardControls,
   } = options;
 
@@ -673,24 +686,7 @@ export default (opts = {}) => {
       return;
     }
 
-    const { galleryPosition } = options;
-
-    if (galleryPosition === 'top' || galleryPosition === 'bottom') {
-      const halfGalleryWidth = $gallery.width() / 2;
-      const halfItemWidth = $activeItem.width() / 2;
-      const offset = halfGalleryWidth - halfItemWidth;
-
-      $gallery.scrollToX(
-        $activeItem,
-        options.slideAnimationDuration,
-        offset,
-      );
-    } else {
-      $gallery.scrollTo(
-        $activeItem,
-        options.slideAnimationDuration,
-      );
-    }
+    $gallery.scrollTo($activeItem, options.slideAnimationDuration);
   };
 
   const setActiveGalleryItem = (index) => {
@@ -719,8 +715,21 @@ export default (opts = {}) => {
 
     const index = getCurrentIndex();
     const $itemToGoTo = $items.filter(`[data-jlightbox-id="${indexToGoTo}"]`);
+    const hasItemToGoTo = $itemToGoTo.length;
 
-    if (!$itemToGoTo.length) {
+    if (options.hideOriginalWhenOpened) {
+      const $previousItem = $items.filter(`[data-jlightbox-id="${index}"]`);
+
+      if ($previousItem.length) {
+        $previousItem.css('opacity', 1);
+      }
+
+      if (hasItemToGoTo) {
+        $itemToGoTo.css('opacity', 0);
+      }
+    }
+
+    if (!hasItemToGoTo) {
       return;
     }
 
@@ -738,6 +747,7 @@ export default (opts = {}) => {
     updateIndex(indexToGoTo);
     setActiveGalleryItem(indexToGoTo);
     $stage.data('jlightbox-busy', true);
+    $realContent.attr('draggable', false);
 
     $jlightbox
       .trigger('before-slide')
@@ -749,7 +759,7 @@ export default (opts = {}) => {
 
     $stage[insertionMethod]($itemWrapper);
     $loadingIndicator.stop().fadeIn(200);
-    window.location.hash = getHash($itemToGoTo.attr('href'));
+    window.location.hash = getHash($itemToGoTo);
 
     const $itemToCache = $currentItemWrapper.find(`.${classPrefix}__item--real`);
     const $clonedItemToCache = $currentItemWrapper.find(`.${classPrefix}__item--cloned`);
@@ -821,10 +831,7 @@ export default (opts = {}) => {
         ...targetDimensions,
       });
 
-      $clonedContent.css({
-        opacity: 0,
-        ...targetDimensions,
-      });
+      $clonedContent.css({ ...targetDimensions });
 
       if (insertionMethod === 'append') {
         $itemWrapper.animate({
@@ -925,7 +932,7 @@ export default (opts = {}) => {
 
   const onGalleryItemLoaded = ({ $currentTarget }) => {
     $currentTarget
-      .fadeIn()
+      .fadeIn(options.galleryItemFadeInDuration)
       .data('jlightbox-loaded', true);
 
     setActiveGalleryItem(getCurrentIndex());
@@ -934,6 +941,10 @@ export default (opts = {}) => {
   const addItemsToGallery = () => {
     $items.forEach(($item) => {
       const itemIndex = $item.data('jlightbox-id');
+
+      if ($gallery.find(`[data-jlightbox-gallery-id="${itemIndex}"]`).length) {
+        return;
+      }
 
       const {
         $realContent,
@@ -947,10 +958,6 @@ export default (opts = {}) => {
         options,
       );
 
-      if ($gallery.find(`[data-jlightbox-gallery-id="${itemIndex}"]`).length) {
-        return;
-      }
-
       const $clonedItem = $realContent
         .clone()
         .attr('draggable', false)
@@ -960,9 +967,11 @@ export default (opts = {}) => {
       $gallery.append($clonedItem);
 
       if (!isCached) {
-        $cache
-          .append($realContent.clone().attr('data-jlightbox-cached-id', itemIndex))
-          .append($clonedContent.attr('data-jlightbox-cached-cached-id', itemIndex));
+        setTimeout(() => {
+          $cache
+            .append($realContent.clone().attr('data-jlightbox-cached-id', itemIndex))
+            .append($clonedContent.attr('data-jlightbox-cached-cached-id', itemIndex));
+        }, 0);
       }
 
       if (isVideo) {
@@ -1028,22 +1037,71 @@ export default (opts = {}) => {
       .data('jlightbox-initialized', true);
   };
 
-  const toggleGallery = () => {
-    const galleryOpen = $jlightbox.data('jlightbox-gallery');
+  const openGallery = () => {
+    $galleryButton.addClass(`${classPrefix}__control-button--gallery-is-active`);
+    $gallery.addClass(`${classPrefix}__gallery--is-open`);
+    $jlightbox.data('jlightbox-gallery', true);
+    $jlightbox.data('jlightbox-gallery-hidden', false);
 
-    $galleryButton.toggleClass(`${classPrefix}__control-button--gallery-is-active`);
-    $gallery.toggleClass(`${classPrefix}__gallery--is-open`);
-    $jlightbox.data('jlightbox-gallery', !galleryOpen);
-    adjustStageSize(galleryOpen);
-
-    if (!galleryOpen) {
+    setTimeout(() => {
       addItemsToGallery();
-      setActiveGalleryItem(getCurrentIndex());
-    }
+    }, options.openAnimationDuration + 200);
+
+    setActiveGalleryItem(getCurrentIndex());
+    adjustStageSize();
 
     if (!$gallery.data('jlightbox-initialized')) {
       initializeGallery();
     }
+  };
+
+  const toggleGallery = () => {
+    if (!$jlightbox.data('jlightbox-gallery')) {
+      openGallery();
+
+      return;
+    }
+
+    adjustStageSize(true);
+    $galleryButton.removeClass(`${classPrefix}__control-button--gallery-is-active`);
+    $gallery.removeClass(`${classPrefix}__gallery--is-open`);
+    $jlightbox.data('jlightbox-gallery-hidden', true);
+    $jlightbox.data('jlightbox-gallery', false);
+  };
+
+  const onSwipeEnd = (pageX, startX) => {
+    if (!$stage.data('jlightbox-item-click-disabled')) {
+      return;
+    }
+
+    const offset = pageX - startX;
+
+    if (offset > swipeThreshold) {
+      goToPrev();
+    } else if (offset < -swipeThreshold) {
+      goToNext();
+    } else {
+      $stage.data('jlightbox-item-click-disabled', false);
+
+      return;
+    }
+
+    setTimeout(() => {
+      $stage.data('jlightbox-item-click-disabled', false);
+    }, 0);
+  };
+
+  const initSwipeControl = () => {
+    let startX;
+
+    $stage
+      .on('mouseleave', ({ pageX }) => onSwipeEnd(pageX, startX))
+      .on('mouseup', ({ pageX }) => onSwipeEnd(pageX, startX))
+      .on('mousedown', ({ pageX }) => {
+        startX = pageX;
+
+        $stage.data('jlightbox-item-click-disabled', true);
+      });
   };
 
   const open = (index) => {
@@ -1053,16 +1111,24 @@ export default (opts = {}) => {
       .trigger('before-open')
       .trigger('focus')
       .attr('aria-hidden', false)
+      .data('jlightbox-current-index', index)
       .addClass(`${classPrefix}--is-opening`);
+
+    updateIndex(index);
+
+    if (options.showGalleryByDefault) {
+      if (!$jlightbox.data('jlightbox-gallery-hidden')) {
+        openGallery();
+      }
+    } else if ($jlightbox.data('jlightbox-gallery-hidden') === false) {
+      openGallery();
+    }
 
     doOpenAnimation(
       $items.filter(`[data-jlightbox-id="${index || '0'}"]`),
       $stage,
       options,
     );
-
-    updateIndex(index);
-    setActiveGalleryItem(index);
 
     $prevButton.fadeIn(openAnimationDuration);
     $nextButton.fadeIn(openAnimationDuration);
@@ -1071,7 +1137,6 @@ export default (opts = {}) => {
 
     $background.fadeIn(openAnimationDuration, () => {
       $jlightbox
-        .data('jlightbox-current-index', index)
         .removeClass(`${classPrefix}--is-opening`)
         .addClass(`${classPrefix}--is-open`)
         .trigger('after-open');
@@ -1091,14 +1156,19 @@ export default (opts = {}) => {
 
     if (!canClose
       || $jlightbox.hasClass(`${classPrefix}--is-opening`)
-      || $jlightbox.hasClass(`${classPrefix}--is-closing`)) {
+      || $jlightbox.hasClass(`${classPrefix}--is-closing`)
+      || $stage.data('jlightbox-item-click-disabled')) {
       return;
     }
 
     const index = getCurrentIndex() || 0;
     const $video = $jlightbox.find('video');
+    const scrollTop = $window.scrollTop();
 
     window.location.hash = '';
+
+    $window.scrollTop(scrollTop);
+    window.history.replaceState('', document.title, window.location.pathname);
 
     if ($video.length) {
       $video.get(0).pause();
@@ -1144,12 +1214,6 @@ export default (opts = {}) => {
     });
   };
 
-  // TODO: Add drag control
-  // $stage.on('dragstart', `.${classPrefix}__item--real`, (event) => {
-  // });
-
-  // TODO: Add iframe support?
-
   const onItemClick = (event) => {
     event.preventDefault();
 
@@ -1168,7 +1232,7 @@ export default (opts = {}) => {
     }
 
     $items.forEach(($item, index) => {
-      if (window.location.hash === `#${getHash($item.attr('href'))}`) {
+      if (window.location.hash === `#${getHash($item)}`) {
         if ($jlightbox.hasClass(`${classPrefix}--is-open`)) {
           setTimeout(() => goTo(index), 150);
         } else {
@@ -1235,6 +1299,7 @@ export default (opts = {}) => {
     toggleAutoplay,
     toggleGallery,
     toggleFullscreen,
+    getCurrentIndex,
     destroy: () => {
       $jlightbox.remove();
 
@@ -1267,7 +1332,7 @@ export default (opts = {}) => {
   $items.forEach(($item, index) => {
     $item.attr('data-jlightbox-id', index);
 
-    if (window.location.hash === `#${getHash($item.attr('href'))}` && !hashedItemOpened) {
+    if (window.location.hash === `#${getHash($item)}` && !hashedItemOpened) {
       hashedItemOpened = true;
 
       setTimeout(() => open(index), 150);
@@ -1294,6 +1359,8 @@ export default (opts = {}) => {
   $closeButton.on('click', close);
   $stage.on('click', close);
   $items.on('click', onItemClick);
+
+  initSwipeControl();
 
   $window
     .on('hashchange', onWindowHashchange)
