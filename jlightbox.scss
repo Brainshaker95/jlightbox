@@ -60,6 +60,10 @@ body.#{$jlightbox-prefix}-open {
     }
   }
 
+  * {
+    box-sizing: content-box;
+  }
+
   &__background {
     display: none;
     position: absolute;
@@ -104,6 +108,10 @@ body.#{$jlightbox-prefix}-open {
       pointer-events: none;
     }
 
+    &--is-active {
+      background-color: $jlightbox-gallery-item-active-background-color;
+    }
+
     &-wrapper {
       position: absolute;
       width: 100%;
@@ -145,10 +153,6 @@ body.#{$jlightbox-prefix}-open {
 
       &:focus-visible {
         background-color: $jlightbox-gallery-item-focus-background-color;
-      }
-
-      &--is-active {
-        background-color: $jlightbox-gallery-item-active-background-color;
       }
     }
 
@@ -196,7 +200,7 @@ body.#{$jlightbox-prefix}-open {
     left: 0;
     width: 100%;
     height: 0.25em;
-    background: transparent;
+    background-color: transparent;
     z-index: 3;
 
     &-inner {
@@ -205,7 +209,7 @@ body.#{$jlightbox-prefix}-open {
       left: 0;
       width: 0;
       height: 100%;
-      background: $jlightbox-progress-color;
+      background-color: $jlightbox-progress-color;
     }
   }
 
@@ -240,7 +244,7 @@ body.#{$jlightbox-prefix}-open {
     width: 3em;
     height: 5em;
     padding: 0;
-    background: none;
+    background-color: transparent;
     border: 0;
     outline: 0;
     transform: translateY(-50%);

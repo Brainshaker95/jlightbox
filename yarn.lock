@@ -3039,10 +3039,10 @@ isstream@~0.1.2:
   resolved "https://registry.yarnpkg.com/isstream/-/isstream-0.1.2.tgz#47e63f7af55afa6f92e1500e690eb8b8529c099a"
   integrity sha1-R+Y/evVa+m+S4VAOaQ64uFKcCZo=
 
-jlight@1.0.16:
-  version "1.0.16"
-  resolved "https://registry.yarnpkg.com/jlight/-/jlight-1.0.16.tgz#72f940ae7348380c48712627a3047f3655bc87ce"
-  integrity sha512-68C/Q6UU2q7oDyIzA0CD9DmwQh3sPYMoFMOws2OZZIfRbsgnqR+7TC/k3jypLVPgmBKTULzXtCSiC0E0IWX+Fg==
+jlight@1.0.17:
+  version "1.0.17"
+  resolved "https://registry.yarnpkg.com/jlight/-/jlight-1.0.17.tgz#ac610390940a03f825e3c465051b972b58b0a277"
+  integrity sha512-GMG1yw6C9WnEFArkgjYU/3qOWv6VgegK1jCOWO2Z6TrPcHo18fE8XpqljKcDiEYX+GbxSKIOPWF5KSH2ScjX/A==
 
 js-base64@^2.1.8:
   version "2.6.4"
