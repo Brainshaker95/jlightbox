@@ -412,7 +412,7 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
     .append($realContent);
 
   $originalItem.css('z-index', zIndex + 1);
-  $loadingIndicator.stop().fadeIn(200);
+  $loadingIndicator.fadeIn(200);
   window.location.hash = getHash($originalItem);
 
   $stage
@@ -432,7 +432,7 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
     $realContent.data('jlightbox-original-width', $realContent.width());
     $realContent.data('jlightbox-original-height', $realContent.height());
     $originalItem.css('z-index', null);
-    $loadingIndicator.stop().fadeOut(200);
+    $loadingIndicator.fadeOut(200);
 
     const targetDimensions = getTargetDimensions(
       $realContent,
@@ -458,13 +458,18 @@ const doOpenAnimation = ($originalItem, $stage, options) => {
         }, openAnimationDuration, noop, openAnimationType);
       });
 
-    $clonedContent
-      .delay(50)
-      .then(() => {
-        $clonedContent.stop().animate({
+    setTimeout(() => {
+      $clonedContent
+        .stop()
+        .animate({
           ...targetDimensions,
-        }, openAnimationDuration, noop, openAnimationType);
-      });
+        },
+        openAnimationDuration,
+        () => {
+          $clonedContent.hide();
+        },
+        openAnimationType);
+    }, 50);
   };
 
   if (isCached) {
@@ -517,9 +522,12 @@ const doCloseAnimation = ($originalItem, $stage, options) => {
     }
   }, closeAnimationType);
 
-  $clonedContent.stop().animate({
-    ...originalDimensions,
-  }, closeAnimationDuration, noop, closeAnimationType);
+  $clonedContent
+    .show()
+    .stop()
+    .animate({
+      ...originalDimensions,
+    }, closeAnimationDuration, noop, closeAnimationType);
 };
 
 export default (opts = {}) => {
@@ -646,10 +654,12 @@ export default (opts = {}) => {
 
   const stopAutoplay = () => {
     $progress.hide();
-    $progressInner.stop();
-    $progressInner.data('jlightbox-busy', false);
     $jlightbox.data('jlightbox-autoplay', false);
     $autoplayButton.removeClass(`${classPrefix}__control-button--autoplay-is-active`);
+
+    $progressInner
+      .stop()
+      .data('jlightbox-busy', false);
   };
 
   const handleAutoplay = (callback) => {
@@ -758,7 +768,7 @@ export default (opts = {}) => {
       .append($realContent);
 
     $stage[insertionMethod]($itemWrapper);
-    $loadingIndicator.stop().fadeIn(200);
+    $loadingIndicator.fadeIn(200);
     window.location.hash = getHash($itemToGoTo);
 
     const $itemToCache = $currentItemWrapper.find(`.${classPrefix}__item--real`);
@@ -815,7 +825,7 @@ export default (opts = {}) => {
     const onContentLoad = () => {
       $realContent.data('jlightbox-original-width', $realContent.width());
       $realContent.data('jlightbox-original-height', $realContent.height());
-      $loadingIndicator.stop().fadeOut(200);
+      $loadingIndicator.fadeOut(200);
 
       const targetDimensions = getTargetDimensions(
         $realContent,
@@ -867,10 +877,10 @@ export default (opts = {}) => {
     const index = getCurrentIndex();
     const prevIndex = index - 1;
 
+    $jlightbox.trigger('prev');
+
     if (prevIndex >= 0) {
       goTo(prevIndex);
-
-      $jlightbox.trigger('prev');
     }
   };
 
@@ -878,10 +888,10 @@ export default (opts = {}) => {
     const index = getCurrentIndex();
     const nextIndex = index + 1;
 
+    $jlightbox.trigger('next');
+
     if (nextIndex <= $items.length) {
       goTo(nextIndex);
-
-      $jlightbox.trigger('next');
     }
   };
 
@@ -1038,8 +1048,10 @@ export default (opts = {}) => {
   };
 
   const openGallery = () => {
+    // TODO: add 404 handling
+    // TODO: make gallery fade configurable
+    $gallery.fadeIn(openAnimationDuration, noop, 'flex');
     $galleryButton.addClass(`${classPrefix}__control-button--gallery-is-active`);
-    $gallery.addClass(`${classPrefix}__gallery--is-open`);
     $jlightbox.data('jlightbox-gallery', true);
     $jlightbox.data('jlightbox-gallery-hidden', false);
 
@@ -1062,15 +1074,17 @@ export default (opts = {}) => {
       return;
     }
 
-    adjustStageSize(true);
+    $gallery.fadeOut(closeAnimationDuration, () => {
+      adjustStageSize(true);
+    });
+
     $galleryButton.removeClass(`${classPrefix}__control-button--gallery-is-active`);
-    $gallery.removeClass(`${classPrefix}__gallery--is-open`);
     $jlightbox.data('jlightbox-gallery-hidden', true);
     $jlightbox.data('jlightbox-gallery', false);
   };
 
   const onSwipeEnd = (pageX, startX) => {
-    if (!$stage.data('jlightbox-item-click-disabled')) {
+    if (!$stage.data('jlightbox-swipe-active')) {
       return;
     }
 
@@ -1081,13 +1095,13 @@ export default (opts = {}) => {
     } else if (offset < -swipeThreshold) {
       goToNext();
     } else {
-      $stage.data('jlightbox-item-click-disabled', false);
+      $stage.data('jlightbox-swipe-active', false);
 
       return;
     }
 
     setTimeout(() => {
-      $stage.data('jlightbox-item-click-disabled', false);
+      $stage.data('jlightbox-swipe-active', false);
     }, 0);
   };
 
@@ -1095,12 +1109,11 @@ export default (opts = {}) => {
     let startX;
 
     $stage
-      .on('mouseleave', ({ pageX }) => onSwipeEnd(pageX, startX))
-      .on('mouseup', ({ pageX }) => onSwipeEnd(pageX, startX))
+      .on('mouseleave mouseup', ({ pageX }) => onSwipeEnd(pageX, startX))
       .on('mousedown', ({ pageX }) => {
         startX = pageX;
 
-        $stage.data('jlightbox-item-click-disabled', true);
+        $stage.data('jlightbox-swipe-active', true);
       });
   };
 
@@ -1157,7 +1170,7 @@ export default (opts = {}) => {
     if (!canClose
       || $jlightbox.hasClass(`${classPrefix}--is-opening`)
       || $jlightbox.hasClass(`${classPrefix}--is-closing`)
-      || $stage.data('jlightbox-item-click-disabled')) {
+      || $stage.data('jlightbox-swipe-active')) {
       return;
     }
 
@@ -1168,7 +1181,7 @@ export default (opts = {}) => {
     window.location.hash = '';
 
     $window.scrollTop(scrollTop);
-    window.history.replaceState('', document.title, window.location.pathname);
+    window.history.replaceState('', document.title, window.location.pathname + window.location.search);
 
     if ($video.length) {
       $video.get(0).pause();
@@ -1176,12 +1189,6 @@ export default (opts = {}) => {
 
     closeFullscreen();
     stopAutoplay();
-
-    if ($jlightbox.data('jlightbox-gallery')) {
-      $galleryButton.removeClass(`${classPrefix}__control-button--gallery-is-active`);
-      $gallery.removeClass(`${classPrefix}__gallery--is-open`);
-      $jlightbox.data('jlightbox-gallery', false);
-    }
 
     $body.removeClass(`${classPrefix}-open`);
 
@@ -1200,12 +1207,26 @@ export default (opts = {}) => {
       );
     }
 
+    $loadingIndicator.fadeOut(200);
     $prevButton.fadeOut(closeAnimationDuration);
     $nextButton.fadeOut(closeAnimationDuration);
-    $control.fadeOut(openAnimationDuration);
-    $index.fadeOut(openAnimationDuration);
+    $index.fadeOut(closeAnimationDuration);
+
+    const galleryOpen = $jlightbox.data('jlightbox-gallery');
+
+    if (galleryOpen) {
+      $gallery.fadeOut(closeAnimationDuration);
+      $jlightbox.data('jlightbox-gallery', false);
+    }
+
+    $control.fadeOut(closeAnimationDuration, () => {
+      if (galleryOpen) {
+        $galleryButton.removeClass(`${classPrefix}__control-button--gallery-is-active`);
+      }
+    });
 
     $background.fadeOut(closeAnimationDuration, () => {
+      $stage.find(`.${classPrefix}__item-wrapper`).remove();
       adjustStageSize(false);
 
       $jlightbox
@@ -1300,6 +1321,8 @@ export default (opts = {}) => {
     toggleGallery,
     toggleFullscreen,
     getCurrentIndex,
+    getElement: () => $jlightbox,
+    getTotalItemCount: () => totalItemCount,
     destroy: () => {
       $jlightbox.remove();
 
@@ -1356,9 +1379,8 @@ export default (opts = {}) => {
   $autoplayButton.on('click', toggleAutoplay);
   $galleryButton.on('click', toggleGallery);
   $fullscreenButton.on('click', toggleFullscreen);
-  $closeButton.on('click', close);
-  $stage.on('click', close);
   $items.on('click', onItemClick);
+  $closeButton.add($stage).on('click', close);
 
   initSwipeControl();
 
