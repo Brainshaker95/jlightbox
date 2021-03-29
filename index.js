@@ -1048,8 +1048,6 @@ export default (opts = {}) => {
   };
 
   const openGallery = () => {
-    // TODO: add 404 handling
-    // TODO: make gallery fade configurable
     $gallery.fadeIn(openAnimationDuration, noop, 'flex');
     $galleryButton.addClass(`${classPrefix}__control-button--gallery-is-active`);
     $jlightbox.data('jlightbox-gallery', true);
@@ -1143,10 +1141,10 @@ export default (opts = {}) => {
       options,
     );
 
+    $index.fadeIn(openAnimationDuration);
     $prevButton.fadeIn(openAnimationDuration);
     $nextButton.fadeIn(openAnimationDuration);
     $control.fadeIn(openAnimationDuration, noop, 'flex');
-    $index.fadeIn(openAnimationDuration);
 
     $background.fadeIn(openAnimationDuration, () => {
       $jlightbox
@@ -1208,9 +1206,9 @@ export default (opts = {}) => {
     }
 
     $loadingIndicator.fadeOut(200);
+    $index.fadeOut(closeAnimationDuration);
     $prevButton.fadeOut(closeAnimationDuration);
     $nextButton.fadeOut(closeAnimationDuration);
-    $index.fadeOut(closeAnimationDuration);
 
     const galleryOpen = $jlightbox.data('jlightbox-gallery');
 
@@ -1322,6 +1320,7 @@ export default (opts = {}) => {
     toggleFullscreen,
     getCurrentIndex,
     getElement: () => $jlightbox,
+    getOptions: () => options,
     getTotalItemCount: () => totalItemCount,
     destroy: () => {
       $jlightbox.remove();
