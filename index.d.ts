@@ -158,7 +158,7 @@ interface jLightbox {
   getElement: () => any,
   /** Gets the lightbox options */
   getOptions: () => options,
-  /** Gets the total count lightbox items */
+  /** Gets the total lightbox item count */
   getTotalItemCount: () => number,
   /** Destroys the lightbox instance */
   destroy: () => void
