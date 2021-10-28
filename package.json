@@ -32,9 +32,11 @@
     "type": "git",
     "url": "https://github.com/Brainshaker95/jlightbox"
   },
+  "typings": "index.d.ts",
   "files": [
     "index.js",
     "jlightbox.scss",
-    "/dist/jlightbox.css"
+    "/dist/jlightbox.css",
+    "index.d.ts"
   ]
 }
