@@ -1,6 +1,6 @@
 declare module 'jlightbox';
 
-type galleryPositions = 'bottom' | 'top';
+type galleryPositions = 'bottom' | 'top' | 'left' | 'right';
 type eventListener = (lightbox: jLightbox, index: number) => void;
 
 interface additionalClasses {
