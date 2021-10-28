@@ -51,9 +51,9 @@ interface translations {
 }
 
 interface options {
-  /** Selector for your elements */
+  /** Selector for the elements that should be displayed in the lightbox */
   selector?: string,
-  /** Prefix for all classes */
+  /** Prefix for all classes used for the lightbox DOM elements */
   classPrefix?: string,
   /** Time per element if autoplay is enabled */
   autoplayDuration?: number,
@@ -63,101 +63,104 @@ interface options {
   closeAnimationDuration?: number,
   /** Time to slide in ms */
   slideAnimationDuration?: number,
-  /** Animation style to open */
+  /** Animation style for opening */
   openAnimationType?: string,
-  /** Animation style to close */
+  /** Animation style for closing */
   closeAnimationType?: string,
-  /** Distance to swipe before it slides to the next element */
+  /** Distance to swipe before sliding to the next element */
   swipeThreshold?: number,
-  /** Hides the original element */
+  /** Hides the original element when the lighbox is opened */
   hideOriginalWhenOpened?: boolean,
   /** Position of gallery */
   galleryPosition?: galleryPositions,
-  /** Time for to fade in in ms */
+  /** Time for gallery fading in in ms */
   galleryItemFadeInDuration?: number,
-  /** Is the gallery visible */
+  /** Whether the gallery is open by default */
   showGalleryByDefault?: boolean,
-  /** Is the gallery visible */
+  /** Whether to append navigation arraows to the lightbox stage */
   appendArrowsToStage?: boolean,
-  /** Padding for the asset container horizontal */
+  /** Horizontal padding for the asset container */
   stagePaddingX?: number,
-  /** Padding for the asset container vertical */
+  /** Vertical padding for the asset container */
   stagePaddingY?: number,
-  /** Function that calls before the modal opens */
+  /** Function that will be called before the lightbox opens */
   onBeforeOpen?: eventListener,
-  /** Function that calls after the modal opens */
+  /** Function that will be called after the lightbox opens */
   onAfterOpen?: eventListener,
-  /** Function that calls before the modal closes */
+  /** Function that will be called before the lightbox closes */
   onBeforeClose?: eventListener,
-  /** Function that calls after the modal closes */
+  /** Function that will be called after the lightbox closes */
   onAfterClose?: eventListener,
-  /** Function that calls before it slides to another element */
+  /** Function that will be called before sliding to another element */
   onBeforeSlide?: eventListener,
-  /** Function that calls after it slides to another element */
+  /** Function that will be called after sliding to another element */
   onAfterSlide?: eventListener,
-  /** Function that calls when it slides to the previous element */
+  /** Function that will be called when sliding to the previous element */
   onPrev?: eventListener,
-  /** Function that calls when it slides to the next element */
+  /** Function that will be called when sliding to the next element */
   onNext?: eventListener,
-  /** The language to show the text in */
+  /** The language to use for the button titles */
   language?: string,
-  /** The translations for all supported languages */
+  /** The translation dictionary used for translating the button titles */
   translations?: {
     [key: string]: translations,
   },
-  /** Extensions that are marked as video */
+  /** File extensions that the lightbox will recognize as videos to load them correctly */
   videoTypes?: string[],
-  /** Text to show in the top left corner */
+  /** Pattern to determine how the current items index should be displayed */
   indexText?: string,
-  /** z-Index for the overlay */
+  /** CSS z-Index for the lightbox */
   zIndex?: number,
-  /** Additional classes for templates */
+  /** Additional classes for the templates */
   additionalClasses?: additionalClasses,
-  /** Custom HTML for teplates */
+  /** Custom HTML for the templates */
   templates?: templates,
-  /** Keyboard controls for controlling the Lightbox */
+  /** Keyboard controls for controlling the lightbox */
   keyboardControls?: keyboardControls,
 };
 
 interface jLightbox {
   /**
-   * Open the overlay at index
+   * Opens the lightbox at the given index
+   *
    * @param {number} index Initial index
    */
   open: (index: number) => void,
   /**
-   * Close the overlay
+   * Closes the lightbox
+   *
    * @param {any} [event] Click event
    */
   close: (event?: any) => void,
   /**
-   * Go to element with index
+   * Goes to element with the given index
+   *
    * @param {number} indexToGoTo Index to go to
    */
   goTo: (indexToGoTo: number) => void,
-  /** Go to next element */
+  /** Goes to next element */
   goToPrev: () => void,
-  /** Go to previous element */
+  /** Goes to previous element */
   goToNext: () => void,
-  /** Go to first element */
+  /** Goes to first element */
   goToFirst: () => void,
-  /** Go to last element */
+  /** Goes to last element */
   goToLast: () => void,
-  /** Toggle autoplay feature */
+  /** Toggles autoplay feature */
   toggleAutoplay: () => void,
-  /** Toggle the gallery */
+  /** Toggles the gallery */
   toggleGallery: () => void,
-  /** Toggle fullscreen */
+  /** Toggles fullscreen mode */
   toggleFullscreen: () => void,
-  /** Get current index */
+  /** Gets the current items index */
   getCurrentIndex: () => number,
-  /** Get current element */
+  /** Gets the lightbox container element */
   getElement: () => any,
-  /** Get current options */
+  /** Gets the lightbox options */
   getOptions: () => options,
-  /** Get count of all items */
+  /** Gets the total count lightbox items */
   getTotalItemCount: () => number,
-  /** Remove the overlay and remove the event listener */
+  /** Destroys the lightbox instance */
   destroy: () => void
 }
 
